@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="lector_window_background">#F7F3EA</color>
+    <color name="lector_window_background_dark">#141312</color>
+    <color name="lector_accent">#A9552F</color>
+    <color name="lector_accent_dark">#D98A5F</color>
+    <color name="splash_background">#F7F3EA</color>
+</resources>

@@ -1,0 +1,39 @@
+# Gradle
+.gradle/
+build/
+app/build/
+local.properties
+
+# Secrets
+.env
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Android
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Kotlin/Java
+*.class
+
+# Logs
+*.log
+imports/
+
+# Firma de release (nunca al repo)
+*.jks
+*.keystore
+keystore/
+
+# Herramientas locales / agentes
+.claude/
+.agents/
+.kotlin/

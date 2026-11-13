@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Primer plano del icono adaptable: el libro se escala al 70 % para caber en
+     la zona segura (círculo de 66 dp) de launchers y splash screen. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.7"
+        android:scaleY="0.7">
+        <path
+            android:fillColor="#000000"
+            android:pathData="M22,26c10,-4 20,-3 28,3v54c-8,-6 -18,-7 -28,-3z" />
+        <path
+            android:fillColor="#000000"
+            android:pathData="M86,26c-10,-4 -20,-3 -28,3v54c8,-6 18,-7 28,-3z" />
+        <path
+            android:fillColor="#000000"
+            android:pathData="M54,29h3v54h-3z" />
+        <path
+            android:fillColor="#000000"
+            android:pathData="M78,18l2.6,6.4l6.4,2.6l-6.4,2.6l-2.6,6.4l-2.6,-6.4l-6.4,-2.6l6.4,-2.6z" />
+        <path
+            android:fillColor="#000000"
+            android:pathData="M31,42h14v2h-14zM31,49h14v2h-14zM31,56h11v2h-11zM63,42h14v2h-14zM63,49h14v2h-14zM63,56h11v2h-11z" />
+    </group>
+</vector>

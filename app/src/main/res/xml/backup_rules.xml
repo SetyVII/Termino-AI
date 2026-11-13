@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <include domain="database" path="termino.db" />
+    <include domain="file" path="books/" />
+    <include domain="sharedpref" path="." />
+    <exclude domain="sharedpref" path="termino_settings.preferences_pb" />
+</full-backup-content>

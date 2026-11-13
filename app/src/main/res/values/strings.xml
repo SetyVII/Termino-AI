@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Término</string>
+
+    <!-- Comunes -->
+    <string name="action_back">Volver</string>
+    <string name="action_continue">Continuar</string>
+    <string name="action_skip">Configurar más tarde</string>
+    <string name="action_verify">Verificar y conectar</string>
+    <string name="action_retry">Reintentar</string>
+    <string name="action_save">Guardar</string>
+    <string name="action_test">Probar</string>
+    <string name="action_testing">Probando…</string>
+    <string name="action_close">Cerrar</string>
+    <string name="show_key">Mostrar clave</string>
+    <string name="hide_key">Ocultar clave</string>
+    <string name="paste">Pegar</string>
+
+    <!-- Onboarding -->
+    <string name="onb_welcome_title">Lee con un asistente\nque conoce tu libro</string>
+    <string name="onb_welcome_body">EPUB y PDF nativos, subrayados y un chat que cita la página exacta. Tus libros y tu índice se quedan en el dispositivo.</string>
+    <string name="onb_feature_native">Lector 100 % nativo, sin WebView</string>
+    <string name="onb_feature_private">Libros, notas e índice solo en tu dispositivo</string>
+    <string name="onb_feature_byok">Tu proveedor de IA, tu clave, sin cuentas</string>
+    <string name="onb_start">Empezar</string>
+    <string name="onb_connect_title">Conecta tu IA</string>
+    <string name="onb_connect_body">Pega una API Key o la URL de tu servidor (Ollama, LM Studio…). Comprobamos los modelos directamente con el proveedor.</string>
+    <string name="onb_input_label">API Key o URL</string>
+    <string name="onb_input_placeholder">sk-… · AIza… · http://192.168.1.20:11434</string>
+    <string name="onb_provider_question">¿De qué proveedor es la clave?</string>
+    <string name="onb_provider_detected">Detectado por el formato de la clave · %1$s</string>
+    <string name="onb_url_mode">Servidor propio · la clave es opcional</string>
+    <string name="onb_url_key_label">API Key (opcional)</string>
+    <string name="onb_advanced">Avanzado</string>
+    <string name="onb_advanced_hint">Déjalo vacío para que se elija a partir de los modelos que ofrece el proveedor.</string>
+    <string name="onb_manual_chat">Modelo de chat</string>
+    <string name="onb_manual_fast">Modelo rápido (diccionario)</string>
+    <string name="onb_key_privacy">La clave solo se envía al proveedor elegido y se guarda solo en este dispositivo. Nunca se incluye en copias de seguridad.</string>
+    <string name="onb_ready_title">Todo listo</string>
+    <string name="onb_ready_body">Conectado a %1$s. Puedes cambiar modelos, idioma y razonamiento en Ajustes.</string>
+    <string name="onb_ready_chat">Chat</string>
+    <string name="onb_ready_fast">Rápido</string>
+    <string name="onb_ready_models">%1$d modelos disponibles</string>
+    <string name="onb_go_library">Ir a la biblioteca</string>
+    <string name="onb_step">Paso %1$d de %2$d</string>
+
+    <!-- Verificación -->
+    <string name="stage_connecting">Conectando con el proveedor…</string>
+    <string name="stage_listing">Consultando modelos disponibles…</string>
+    <string name="stage_testing">Probando el modelo con una petición real…</string>
+    <string name="stage_done">Conexión verificada</string>
+    <string name="fail_missing_input">Pega una API Key o una URL.</string>
+    <string name="fail_missing_provider">Elige el proveedor de esta clave.</string>
+    <string name="fail_bad_key">El proveedor rechazó la clave. Revisa que esté completa y activa.</string>
+    <string name="fail_unreachable">No se pudo contactar con el servidor. Revisa la URL y la conexión.</string>
+    <string name="fail_no_models">El proveedor no publicó modelos de chat. Escribe uno en Avanzado.</string>
+    <string name="fail_model_rejected">Ningún modelo respondió correctamente. Prueba otro en Avanzado.</string>
+
+    <!-- Ajustes -->
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_subtitle">Datos locales · sin cuentas · sin telemetría</string>
+    <string name="settings_connection">Conexión de IA</string>
+    <string name="settings_connection_sub">Verificada contra el proveedor, sin listas fijas.</string>
+    <string name="settings_not_connected">Sin conectar. El lector funciona igual; el asistente necesita una conexión.</string>
+    <string name="settings_connect">Conectar</string>
+    <string name="settings_change_connection">Cambiar conexión</string>
+    <string name="settings_forget_connection">Olvidar</string>
+    <string name="settings_forget_title">¿Olvidar la conexión?</string>
+    <string name="settings_forget_body">Se borrará la clave de este dispositivo. Tus libros, notas y chats se mantienen.</string>
+    <string name="settings_answers">Respuestas de la IA</string>
+    <string name="settings_answers_sub">Idioma y profundidad del razonamiento.</string>
+    <string name="settings_ai_language">Idioma de las respuestas</string>
+    <string name="settings_ai_language_auto">Automático (el de tu pregunta)</string>
+    <string name="settings_search_language">Buscar idioma</string>
+    <string name="settings_reasoning">Esfuerzo de razonamiento</string>
+    <string name="settings_reasoning_hint">Si el modelo no lo admite, el proveedor lo indica y la app deja de enviarlo para ese modelo.</string>
+    <string name="settings_context_size">Contexto que se envía</string>
+    <string name="settings_context_size_hint">Compacto va mejor con modelos locales o gratuitos (más rápido, menos tokens). Automático usa Compacto en servidores locales y Equilibrado en la nube.</string>
+    <string name="context_auto">Automático</string>
+    <string name="context_compact">Compacto</string>
+    <string name="context_balanced">Equilibrado</string>
+    <string name="context_wide">Amplio</string>
+    <string name="settings_advanced">Avanzado</string>
+    <string name="settings_advanced_sub">URL, modelos, temperatura y límite de tokens.</string>
+    <string name="settings_base_url">URL base de la API</string>
+    <string name="settings_api_key">API Key</string>
+    <string name="settings_fast_model">Modelo rápido · diccionario</string>
+    <string name="settings_chat_model">Modelo de chat · preguntas profundas</string>
+    <string name="settings_models_from_provider">Modelos que ofrece el proveedor</string>
+    <string name="settings_models_loading">Consultando modelos…</string>
+    <string name="settings_models_empty">El proveedor no devolvió modelos; puedes escribirlos a mano.</string>
+    <string name="settings_reload_models">Recargar modelos</string>
+    <string name="settings_reasoning_model">Admite razonamiento según el proveedor</string>
+    <string name="settings_temperature">Temperatura · %1$s</string>
+    <string name="settings_max_tokens">Máximo de tokens · %1$d</string>
+    <string name="settings_saved">Ajustes guardados</string>
+    <string name="settings_reading">Lectura</string>
+    <string name="settings_reading_sub">Se aplica al instante a EPUB y PDF.</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_font_size">Tamaño de letra</string>
+    <string name="settings_line_height">Interlineado · %1$s</string>
+    <string name="settings_font_family">Familia tipográfica</string>
+    <string name="settings_eye_care">Cuidado de la vista</string>
+    <string name="settings_eye_care_sub">Filtro cálido sobre el lector que reduce la luz azul.</string>
+    <string name="settings_app_theme">Modo de la app</string>
+    <string name="settings_app_theme_system">Sistema</string>
+    <string name="settings_app_theme_light">Claro</string>
+    <string name="settings_app_theme_dark">Oscuro</string>
+    <string name="settings_app_language">Idioma de la app</string>
+    <string name="settings_app_language_system">Idioma del sistema</string>
+    <string name="settings_app_language_legacy">En esta versión de Android la app sigue el idioma del sistema.</string>
+    <string name="settings_about">Acerca de</string>
+    <string name="settings_about_sub">Lector nativo para tablet y móvil, basado en ReadAny.</string>
+    <string name="settings_about_body">EPUB con TextView y Spannable, PDF con PdfBox-Android, subrayados persistentes, diccionario contextual y chat con citas sobre un índice híbrido local.</string>
+    <string name="settings_about_privacy">Sin cuentas ni telemetría.</string>
+    <string name="settings_about_based_on">Basado en ReadAny de codedogQBY, software libre bajo GPL-3.0. Término se distribuye con la misma licencia.</string>
+    <string name="settings_source_code">Código fuente</string>
+    <string name="settings_licenses">Licencias de código abierto</string>
+    <string name="settings_licenses_intro">Término es software libre bajo la GNU GPL v3.0. Incluye estos componentes:</string>
+    <string name="source_code_url" translatable="false">https://github.com/SetyVII/readany-tablet</string>
+    <string name="settings_version">Versión %1$s</string>
+    <string name="settings_rag">Índice local</string>
+    <string name="settings_rag_body">Búsqueda híbrida BM25 + vectores locales con fusión RRF. El índice nunca sale del dispositivo.</string>
+    <string name="settings_redo_onboarding">Ver la bienvenida de nuevo</string>
+
+    <string name="settings_tap_zones">Tocar los bordes para pasar página</string>
+    <string name="settings_tap_zones_sub">Izquierda = anterior, derecha = siguiente, centro = mostrar u ocultar la interfaz.</string>
+    <string name="settings_volume_keys">Pasar página con el volumen</string>
+    <string name="settings_keep_screen_on">Mantener la pantalla encendida al leer</string>
+    <string name="settings_pdf_pages">PDF como página original</string>
+    <string name="settings_pdf_pages_sub">Muestra el diseño real del PDF con zoom. Desactívalo para leer el texto extraído con subrayados.</string>
+    <!-- Biblioteca -->
+    <string name="library_ai_off">Conectar IA</string>
+    <string name="library_ai_on">IA · %1$s</string>
+</resources>
