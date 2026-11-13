@@ -25,8 +25,6 @@ El APK queda en `app/build/outputs/apk/debug/`. Instálalo con `adb install -r` 
 
 Módulos independientes, cada uno con su README: [`core/ai`](core/ai), [`core/rag`](core/rag), [`core/parser`](core/parser), [`core/reader`](core/reader). La app está en `app/`. Pruebas: `./gradlew :app:testDebugUnitTest`.
 
-Para un release firmado, define `TERMINO_KEYSTORE`, `TERMINO_KEYSTORE_PASSWORD`, `TERMINO_KEY_ALIAS` y `TERMINO_KEY_PASSWORD` como variables de entorno o en `local.properties`, y ejecuta `./gradlew :app:bundleRelease`.
-
 ## Licencia
 
 GPL-3.0, ver [`LICENSE`](LICENSE). Basado en [ReadAny](https://github.com/codedogQBY/ReadAny) de codedogQBY. Atribuciones en [`NOTICE.md`](NOTICE.md).
