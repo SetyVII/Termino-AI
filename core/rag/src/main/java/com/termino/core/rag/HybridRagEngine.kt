@@ -17,9 +17,9 @@ data class RagResult(
     val score: Double,
     val lexicalRank: Int?,
     val vectorRank: Int?,
-    /** Resumen corto para la UI (fuentes del chat). */
+    /** Short summary for the UI (chat sources). */
     val excerpt: String,
-    /** Texto que recibe la IA: la parte más relevante del fragmento, con vecinos si aplica. */
+    /** Text sent to the AI: the most relevant part of the chunk, plus neighbors when applicable. */
     val passage: String = excerpt
 ) {
     val citation: String
@@ -63,13 +63,13 @@ data class RagSearchResult(
  *    books retrievable without a re-import.
  */
 /**
- * Punto de entrada del módulo RAG. Uso típico:
+ * Entry point of the RAG module. Typical usage:
  *
  * ```
  * val engine = HybridRagEngine.create(context)
- * engine.indexBook(bookId, chapters)            // al importar
- * val result = engine.search(bookId, pregunta)  // al preguntar
- * engine.clearIndex(bookId)                     // al borrar el libro
+ * engine.indexBook(bookId, chapters)            // on import
+ * val result = engine.search(bookId, question)  // on each question
+ * engine.clearIndex(bookId)                     // when the book is deleted
  * ```
  */
 class HybridRagEngine(
@@ -77,7 +77,7 @@ class HybridRagEngine(
     private val embedder: LocalEmbedder = LocalEmbedder()
 ) {
     companion object {
-        /** Crea el motor con su propia base de datos (termino_rag.db por defecto). */
+        /** Creates the engine with its own database (termino_rag.db by default). */
         fun create(context: android.content.Context, databaseName: String = "termino_rag.db"): HybridRagEngine =
             HybridRagEngine(RagDatabase.build(context, databaseName))
 
@@ -95,12 +95,12 @@ class HybridRagEngine(
         private const val BM25_B = 0.75
         private const val MIN_COSINE = 0.015
 
-        /** MMR: candidatos considerados, peso de relevancia y umbral de duplicado. */
+        /** MMR: candidates considered, relevance weight and duplicate threshold. */
         private const val MMR_POOL = 30
         private const val MMR_LAMBDA = 0.75
         private const val DUPLICATE_COSINE = 0.92
 
-        /** Pasaje que recibe la IA por fuente y contexto extra para las mejores. */
+        /** Passage sent to the AI per source, and extra context for the top sources. */
         private const val PASSAGE_CHARS = 1500
         private const val NEIGHBOR_RESULTS = 2
         private const val NEIGHBOR_WORDS = 70
@@ -443,9 +443,9 @@ class HybridRagEngine(
                 }
             }
 
-            // MMR: entre los mejores candidatos se prefieren los que aportan algo
-            // nuevo, y se descartan casi-duplicados (p. ej. el solapamiento entre
-            // fragmentos contiguos o pasajes repetidos en el libro).
+            // MMR: among the best candidates, prefer the ones that add something
+            // new and drop near-duplicates (e.g. the overlap between adjacent
+            // chunks or passages repeated in the book).
             val pool = fused.values.sortedByDescending { it.score }.take(MMR_POOL)
             fun vectorOf(chunk: RagChunkEntity): FloatArray =
                 vectorsById.getOrPut(chunk.id) { embedder.embed(chunk.content, idfProvider) }
@@ -549,9 +549,9 @@ class HybridRagEngine(
     }
 
     /**
-     * Para las mejores fuentes añade el final del fragmento anterior y el
-     * principio del siguiente: muchas ideas empiezan o terminan justo en el
-     * corte. Se salta el solapamiento de [TextChunker] para no repetir texto.
+     * For the top sources, appends the end of the previous chunk and the
+     * start of the next one: many ideas start or end right at the cut.
+     * [TextChunker]'s overlap is skipped so text is not repeated.
      */
     private suspend fun addNeighbors(
         bookId: String,
@@ -579,7 +579,7 @@ class HybridRagEngine(
                 words.subList(start, (start + NEIGHBOR_WORDS).coerceAtMost(words.size)).joinToString(" ")
             }.orEmpty()
             val core = bestPassage(chunk.content, emptyList(), (passageChars * 1.5).toInt()).let {
-                // Con vecinos se envía el fragmento completo (hasta el límite) y no solo la ventana.
+                // With neighbors, the whole chunk is sent (up to the limit), not just the window.
                 if (before.isBlank() && after.isBlank()) result.passage else it
             }
             val passage = buildString {
@@ -593,9 +593,9 @@ class HybridRagEngine(
 }
 
 /**
- * Ventana de ~[maxChars] del fragmento con más términos de la consulta,
- * alineada a frases. Antes solo se enviaban los primeros 460 caracteres,
- * aunque la respuesta estuviera al final del fragmento.
+ * A ~[maxChars] window of the chunk containing the most query terms,
+ * aligned to sentence boundaries, so the answer is included even when it
+ * sits at the end of the chunk.
  */
 internal fun bestPassage(content: String, terms: List<String>, maxChars: Int): String {
     val text = TextTokenizer.collapseWhitespace(content)

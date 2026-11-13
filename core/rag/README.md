@@ -1,36 +1,37 @@
-# :core:rag — Búsqueda híbrida local (RAG sin servidores)
+# :core:rag — Local hybrid search (serverless RAG)
 
-Indexa libros (o cualquier texto por capítulos) y recupera los pasajes más relevantes para una pregunta, **todo en el dispositivo**. Tiene su **propia base de datos Room** (`termino_rag.db`) y no conoce el esquema de la app: los libros se identifican con un `bookId` opaco.
+Indexes books (or any chapter-based text) and retrieves the passages most relevant to a question, **entirely on the device**. It has its **own Room database** (`termino_rag.db`) and does not know the app schema: books are identified by an opaque `bookId`.
 
 ## API
 
 ```kotlin
 val engine = HybridRagEngine.create(context)
 
-engine.indexBook(bookId, chapters = listOf(IndexChapter(0, "Capítulo 1", texto)))
+engine.indexBook(bookId, chapters = listOf(IndexChapter(0, "Chapter 1", text)))
 val result = engine.search(
-    bookId, query = "¿qué es la entropía?",
-    topK = 5, currentChapterIndex = 2, currentVisibleText = paginaVisible,
+    bookId, query = "what is entropy?",
+    topK = 5, currentChapterIndex = 2, currentVisibleText = visiblePage,
     passageChars = 1200, neighborSources = 1
 )
-result.results.forEach { it.passage /* para el LLM */; it.excerpt /* para la UI */ }
+result.results.forEach { it.passage /* for the LLM */; it.excerpt /* for the UI */ }
 
-engine.clearIndex(bookId) // al borrar el libro
+engine.clearIndex(bookId) // when the book is deleted
 ```
 
 ## Pipeline
 
-1. **Troceado** (`TextChunker`): ~350 palabras, 50 de solapamiento, por párrafos y oraciones.
-2. **Léxico**: SQLite FTS4 + **BM25** (k1 1.5, b 0.75) con variantes singular/plural ES/EN.
-3. **Vectorial** (`LocalEmbedder`): TF-IDF denso de 512 dimensiones con *hashing trick* (unigramas, bigramas, trigramas de caracteres), coseno.
-4. **Fusión RRF** (k 60) + empujones suaves por capítulo actual y por página visible.
-5. **MMR** para diversidad y descarte de casi-duplicados.
-6. **Pasaje** más relevante del fragmento (`bestPassage`) y **vecinos** para las mejores fuentes.
+1. **Chunking** (`TextChunker`): ~350 words with 50 words of overlap, packed by paragraph and sentence; chunks under 80 words are merged with the next one in the same chapter.
+2. **Lexical**: SQLite FTS4 + **BM25** (k1 1.5, b 0.75), with English/Spanish singular/plural query expansion.
+3. **Vector** (`LocalEmbedder`): 512-dimension dense TF-IDF using the *hashing trick* (unigrams, bigrams, character trigrams), cosine similarity. Deterministic, no model download.
+4. **RRF fusion** (k 60, weights 1.0 lexical / 1.15 vector) plus soft multiplicative boosts for the current chapter (~+10%) and overlap with the visible page (~+8%). The visible page's distinctive terms are also blended into the query vector.
+5. **MMR** for diversity, dropping near-duplicates (cosine > 0.92, λ = 0.75).
+6. The most relevant **passage** of each chunk (`bestPassage`), plus **neighbors** (end of the previous chunk, start of the next) for the top sources.
 
-## Por dónde mejorar
+Book vectors are cached in a per-book LRU (2 books, ~12 MB) for the session. Chunks indexed with an older embedder version are re-embedded lazily, so old books stay searchable without re-importing.
 
-- Añadir un `Embedder` neuronal (ONNX/LiteRT, p. ej. EmbeddingGemma) como tercer canal en la misma fusión RRF; `LocalEmbedder` es el punto a abstraer.
-- Reranking con LLM o cross-encoder sobre el *pool* de MMR.
-- Empuje por sección (requiere guardar la sección en `RagChunkEntity`).
+## Possible improvements
 
-Notas de diseño y mediciones: [`docs/RAG_IMPROVEMENTS.md`](../../docs/RAG_IMPROVEMENTS.md).
+- A neural `Embedder` (ONNX/LiteRT, e.g. EmbeddingGemma) as a third channel in the same RRF fusion; `LocalEmbedder` is the point to abstract.
+- LLM or cross-encoder reranking over the MMR pool.
+- Section boost (requires storing the section in `RagChunkEntity`).
+- A DAO projection without the `embedding` column to avoid reading BLOBs when only metadata is needed.

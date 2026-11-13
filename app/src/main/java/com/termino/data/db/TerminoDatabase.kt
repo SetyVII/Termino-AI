@@ -6,12 +6,12 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 /**
- * Base de datos de la app: biblioteca, capítulos, subrayados, marcadores,
- * chat y referencias. El índice RAG vive aparte, en la base de datos propia
- * del módulo :core:rag.
+ * App database: library, chapters, highlights, bookmarks, chat and
+ * references. The RAG index lives separately, in the :core:rag module's own
+ * database.
  *
- * Versión 1 de Termino: esquema inicial, sin migraciones heredadas. Los
- * cambios futuros deben añadir una Migration en lugar de destruir datos.
+ * Version 1 is the initial schema. Future changes must add a Migration
+ * instead of destroying data.
  */
 @Database(
     entities = [

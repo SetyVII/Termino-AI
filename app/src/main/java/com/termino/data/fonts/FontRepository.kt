@@ -1,5 +1,6 @@
 package com.termino.data.fonts
 
+import com.termino.R
 import com.termino.core.reader.ReaderFont
 import android.content.Context
 import android.graphics.Typeface
@@ -14,9 +15,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 
 /**
- * Fuentes disponibles para el lector: las familias del sistema y las TTF/OTF
- * que el usuario importe (se copian a files/fonts para no depender del
- * permiso sobre el archivo original).
+ * Fonts available to the reader: system families plus TTF/OTF files the user
+ * imports (copied to files/fonts so they do not depend on permission to the
+ * original file).
  */
 class FontRepository(context: Context) {
     private val appContext = context.applicationContext
@@ -40,12 +41,12 @@ class FontRepository(context: Context) {
         when {
             file != null && file.exists() ->
                 runCatching { Typeface.createFromFile(file) }.getOrDefault(Typeface.SERIF)
-            file != null -> Typeface.SERIF // fuente importada que ya no existe
+            file != null -> Typeface.SERIF // imported font that no longer exists
             else -> Typeface.create(font.id, Typeface.NORMAL)
         }
     }
 
-    /** Copia y valida una fuente elegida con el selector de archivos. */
+    /** Copies and validates a font picked with the file picker. */
     suspend fun import(uri: Uri): Result<ReaderFont> = withContext(Dispatchers.IO) {
         runCatching {
             val resolver = appContext.contentResolver
@@ -53,17 +54,17 @@ class FontRepository(context: Context) {
                 ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
                 ?: "fuente.ttf"
             val ext = displayName.substringAfterLast('.', "ttf").lowercase()
-            require(ext in EXTENSIONS) { "Solo se admiten fuentes .ttf u .otf" }
+            require(ext in EXTENSIONS) { appContext.getString(R.string.font_error_type) }
             val safeName = displayName.substringBeforeLast('.')
                 .replace(Regex("[^A-Za-z0-9 _-]"), "_").take(60).ifBlank { "fuente" } + "." + ext
             val target = File(dir, safeName)
             val temp = File(dir, "$safeName.tmp")
             resolver.openInputStream(uri)?.use { input ->
                 temp.outputStream().use { input.copyTo(it) }
-            } ?: error("No se pudo leer el archivo")
-            // Typeface lanza si el archivo no es una fuente válida.
+            } ?: error(appContext.getString(R.string.font_error_read))
+            // Typeface throws if the file is not a valid font.
             runCatching { Typeface.createFromFile(temp) }
-                .getOrElse { temp.delete(); error("El archivo no es una fuente válida") }
+                .getOrElse { temp.delete(); error(appContext.getString(R.string.font_error_invalid)) }
             if (target.exists()) target.delete()
             temp.renameTo(target)
             val font = ReaderFont(ReaderFont.CUSTOM_PREFIX + target.name)

@@ -1,20 +1,20 @@
 package com.termino.core.ai
 
 /**
- * Esfuerzo de razonamiento pedido al proveedor. [apiValue] es el valor en
- * minúsculas que se envía como "reasoning_effort" en la API compatible con
- * OpenAI, o null cuando el ajuste está apagado (OFF) y no debe enviarse.
+ * Reasoning effort requested from the provider. [apiValue] is the lowercase
+ * value sent as "reasoning_effort" in the OpenAI-compatible API, or null when
+ * the setting is OFF and must not be sent.
  *
- * El valor por defecto es OFF (no MEDIUM) porque la mayoría de los modelos
- * (mistral-small-latest, mistral-large-latest, gpt-4.1...) no exponen ese
- * parámetro y algunos proveedores responden 400 al recibirlo. Solo los
- * modelos de razonamiento (Magistral, o1, R1...) lo aceptan.
+ * The default is OFF (not MEDIUM) because most models
+ * (mistral-small-latest, mistral-large-latest, gpt-4.1...) do not expose that
+ * parameter and some providers answer 400 when they receive it. Only
+ * reasoning models (Magistral, o1, R1...) accept it.
  */
-enum class ReasoningEffort(val label: String) {
-    OFF("Apagado"),
-    LOW("Bajo"),
-    MEDIUM("Medio"),
-    HIGH("Alto");
+enum class ReasoningEffort {
+    OFF,
+    LOW,
+    MEDIUM,
+    HIGH;
 
     val apiValue: String?
         get() = when (this) {
@@ -31,11 +31,11 @@ enum class ReasoningEffort(val label: String) {
 }
 
 /**
- * Directorio de endpoints compatibles con OpenAI. Solo contiene la URL base y,
- * opcionalmente, un prefijo de clave conocido para *sugerir* el proveedor al
- * pegar una API Key. Los modelos, el contexto y el soporte de razonamiento NO
- * se fijan aquí: se consultan al proveedor (GET /models) y se verifican con
- * una petición real antes de guardar.
+ * Directory of OpenAI-compatible endpoints. It only holds the base URL and,
+ * optionally, a known key prefix used to *suggest* the provider when an API
+ * key is pasted. Models, context size and reasoning support are NOT fixed
+ * here: they are queried from the provider (GET /models) and verified with a
+ * real request before saving.
  */
 data class ProviderEndpoint(
     val id: String,
@@ -59,7 +59,7 @@ data class ProviderEndpoint(
             ProviderEndpoint("glm", "GLM", "https://open.bigmodel.cn/api/paas/v4")
         )
 
-        /** Proveedor sugerido por el prefijo de la clave, o null si es ambiguo. */
+        /** Provider suggested by the key prefix, or null if ambiguous. */
         fun suggestForKey(key: String): ProviderEndpoint? {
             val trimmed = key.trim()
             return known
@@ -75,7 +75,7 @@ data class ProviderEndpoint(
             return known.firstOrNull { normalized.startsWith(it.baseUrl.lowercase()) }
         }
 
-        /** Heurística de formato: el usuario pegó una URL en lugar de una clave. */
+        /** Format heuristic: the user pasted a URL instead of a key. */
         fun looksLikeUrl(input: String): Boolean {
             val t = input.trim().lowercase()
             return t.startsWith("http://") || t.startsWith("https://") ||
@@ -83,7 +83,7 @@ data class ProviderEndpoint(
                 Regex("""^[a-z0-9.-]+\.[a-z]{2,}(:\d+)?/.*$""").matches(t)
         }
 
-        /** Completa esquema y puerto típicos para URLs escritas a mano. */
+        /** Fills in the usual scheme and port for hand-typed URLs. */
         fun normalizeUrl(input: String): String {
             var t = input.trim().trimEnd('/')
             if (!t.startsWith("http://") && !t.startsWith("https://")) {
@@ -95,7 +95,7 @@ data class ProviderEndpoint(
     }
 }
 
-/** Endpoints de red local (Ollama, LM Studio...) que no exigen API Key. */
+/** Local network endpoints (Ollama, LM Studio...) that do not require an API key. */
 fun isLocalEndpoint(baseUrl: String): Boolean {
     val host = runCatching { java.net.URI(baseUrl.trim()).host }.getOrNull()?.lowercase()
         ?: return false

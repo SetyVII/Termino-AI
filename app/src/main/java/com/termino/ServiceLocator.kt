@@ -3,6 +3,7 @@ package com.termino
 import com.termino.core.ai.AiStreamingClient
 import com.termino.core.ai.ProviderVerifier
 import com.termino.core.parser.EpubProcessor
+import com.termino.core.parser.ParserLabels
 import com.termino.core.parser.PdfProcessor
 import com.termino.core.rag.HybridRagEngine
 import android.content.Context
@@ -24,11 +25,28 @@ class ServiceLocator(context: Context) {
         com.termino.data.fonts.FontRepository(appContext)
     }
     val aiStreamingClient: AiStreamingClient by lazy { AiStreamingClient() }
-    val aiRepository: AiRepository by lazy { AiRepository(aiStreamingClient) }
+    val aiRepository: AiRepository by lazy { AiRepository(appContext, aiStreamingClient) }
     val providerVerifier: ProviderVerifier by lazy { ProviderVerifier(aiStreamingClient) }
     val ragEngine: HybridRagEngine by lazy { HybridRagEngine.create(appContext) }
-    val epubProcessor: EpubProcessor by lazy { EpubProcessor() }
-    val pdfProcessor: PdfProcessor by lazy { PdfProcessor(appContext) }
+    private val parserLabels: ParserLabels by lazy {
+        ParserLabels(
+            chapter = appContext.getString(R.string.parser_chapter),
+            section = appContext.getString(R.string.parser_section),
+            sectionReference = appContext.getString(R.string.parser_section_reference),
+            page = appContext.getString(R.string.parser_page),
+            affiliation = appContext.getString(R.string.parser_affiliation),
+            contact = appContext.getString(R.string.parser_contact),
+            figure = appContext.getString(R.string.parser_figure),
+            table = appContext.getString(R.string.parser_table),
+            bibliography = appContext.getString(R.string.parser_bibliography),
+            untitledBook = appContext.getString(R.string.parser_untitled_book),
+            untitledPdf = appContext.getString(R.string.parser_untitled_pdf),
+            unknownAuthor = appContext.getString(R.string.parser_unknown_author),
+            emptyPdfPage = appContext.getString(R.string.parser_empty_pdf_page)
+        )
+    }
+    val epubProcessor: EpubProcessor by lazy { EpubProcessor(parserLabels) }
+    val pdfProcessor: PdfProcessor by lazy { PdfProcessor(appContext, parserLabels) }
     val bookRepository: BookRepository by lazy {
         BookRepository(appContext, database, ragEngine)
     }
@@ -38,7 +56,7 @@ class ServiceLocator(context: Context) {
     val chatRepository: ChatRepository by lazy {
         ChatRepository(database.chatDao())
     }
-    val readingContextBuilder: ReadingContextBuilder by lazy { ReadingContextBuilder() }
+    val readingContextBuilder: ReadingContextBuilder by lazy { ReadingContextBuilder(appContext) }
     val bookImporter: BookImporter by lazy {
         BookImporter(
             context = appContext,

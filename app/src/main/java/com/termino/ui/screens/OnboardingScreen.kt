@@ -105,9 +105,9 @@ import kotlinx.coroutines.delay
 private enum class OnboardingStep { WELCOME, CONNECT, READY }
 
 /**
- * Bienvenida al abrir la app por primera vez. A priori solo pide una API Key
- * o una URL; lo demás (modelos, razonamiento, idioma) se deduce del proveedor
- * y queda configurable en "Avanzado" o en Ajustes.
+ * Welcome flow on first launch. It only asks for an API key or a URL;
+ * everything else (models, reasoning, language) is derived from the provider
+ * and stays configurable under "Advanced" or in Settings.
  */
 @Composable
 fun OnboardingScreen(
@@ -123,7 +123,7 @@ fun OnboardingScreen(
 
     LaunchedEffect(state.saved) {
         if (state.saved && step == OnboardingStep.CONNECT) {
-            delay(650) // deja ver el check de "verificado" antes de avanzar
+            delay(650) // let the "verified" check show before moving on
             stepName = OnboardingStep.READY.name
         }
     }
@@ -346,7 +346,7 @@ private fun ColumnScope.WelcomeStep(onStart: () -> Unit) {
     }
 }
 
-/** Entrada escalonada: cada elemento sube y aparece 70 ms después del anterior. */
+/** Staggered entrance: each element slides up and appears 70 ms after the previous one. */
 @Composable
 private fun StaggeredItem(index: Int, content: @Composable () -> Unit) {
     var visible by remember { mutableStateOf(false) }
@@ -389,9 +389,9 @@ private fun FeatureLine(icon: ImageVector, text: String) {
 }
 
 /**
- * Formulario de conexión compartido por el onboarding y Ajustes: un campo
- * (clave o URL), selector de proveedor solo si la clave es ambigua, opciones
- * avanzadas plegadas y progreso real de la verificación.
+ * Connection form shared by onboarding and Settings: a single field (key or
+ * URL), a provider picker only when the key is ambiguous, collapsed advanced
+ * options and real verification progress.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -455,7 +455,7 @@ fun ConnectionForm(
             shape = RoundedCornerShape(14.dp)
         )
 
-        // Proveedor: solo se pregunta si la clave no se puede atribuir por su formato.
+        // Provider: only asked when the key format does not identify it.
         AnimatedContent(
             targetState = when {
                 state.input.isBlank() -> 0
@@ -857,7 +857,7 @@ private fun ColumnScope.ReadyStep(
     }
 }
 
-/** Modelo elegido con sus alternativas (las 6 mejores del proveedor) como chips. */
+/** Chosen model with its alternatives (top 6 from the provider) as chips. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ModelPickRow(

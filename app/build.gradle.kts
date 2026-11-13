@@ -16,9 +16,9 @@ val localProperties = Properties().apply {
 }
 
 /**
- * Firma de release sin secretos en el repo: se lee de variables de entorno
- * (CI) o de local.properties (gitignored). Si falta algo, el release queda
- * sin firmar y Gradle avisa, pero nunca se incrusta ninguna clave en el APK.
+ * Release signing without secrets in the repo: values are read from
+ * environment variables (CI) or from local.properties (gitignored). If they
+ * are missing, the release build is left unsigned.
  */
 fun signingValue(name: String): String? =
     System.getenv(name)?.takeIf { it.isNotBlank() }
@@ -39,9 +39,9 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
-    // El locales_config.xml se genera a partir de las carpetas values-* que
-    // existan de verdad (no hay lista de idiomas escrita a mano): añadir una
-    // traducción nueva la publica sola en "Idioma de la app" de Android 13+.
+    // locales_config.xml is generated from the values-* folders that exist, so
+    // adding a translation automatically lists it in Android 13+ per-app
+    // language settings.
     androidResources {
         generateLocaleConfig = true
     }

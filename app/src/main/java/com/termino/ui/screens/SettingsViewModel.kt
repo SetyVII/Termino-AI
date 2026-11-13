@@ -85,7 +85,7 @@ class SettingsViewModel(
         }
     }
 
-    /** GET {base}/models con los metadatos del proveedor (sin caché). */
+    /** GET {base}/models with provider metadata (not cached). */
     fun refreshModels(baseUrl: String, apiKey: String) {
         val trimmedBase = baseUrl.trim()
         modelsJob?.cancel()

@@ -1,5 +1,6 @@
 package com.termino.data.repo
 
+import com.termino.R
 import com.termino.core.rag.HybridRagEngine
 import android.content.Context
 import android.content.Intent
@@ -69,13 +70,13 @@ class BookRepository(
         val jobId = UUID.randomUUID().toString()
         val name = displayName?.takeIf { it.isNotBlank() }
             ?: resolveDisplayName(uri)
-            ?: "Libro importado"
+            ?: context.getString(R.string.import_default_name)
         ImportStatusStore.add(
             ImportJob(
                 id = jobId,
                 displayName = name,
                 state = ImportJobState.QUEUED,
-                message = "En cola"
+                message = context.getString(R.string.import_queued)
             )
         )
         val request = OneTimeWorkRequestBuilder<BookImportWorker>()
@@ -103,7 +104,7 @@ class BookRepository(
                 id = jobId,
                 displayName = displayName,
                 state = ImportJobState.QUEUED,
-                message = "En cola"
+                message = context.getString(R.string.import_queued)
             )
         )
         val request = OneTimeWorkRequestBuilder<BookImportWorker>()
@@ -125,20 +126,19 @@ class BookRepository(
     }
 
     /**
-     * Encola el reanálisis de un libro ya importado: se vuelven a procesar
-     * capítulos, referencias, imágenes, portada e índice RAG con el mismo
-     * [bookId], conservando subrayados y chat.
+     * Enqueues a re-analysis of an already imported book: chapters,
+     * references, images, cover and RAG index are processed again under the
+     * same [bookId], keeping highlights and chat.
      *
-     * El job en [ImportStatusStore] usa un id determinista por libro
-     * ("reprocess_<bookId>") y nombre "Reanalizando «<título>»", de modo que
-     * pedirlo dos veces actualiza la misma tarjeta de estado en lugar de
-     * crear avisos huérfanos. El work único se encola con
-     * [ExistingWorkPolicy.KEEP]: si ya hay un reanálisis pendiente o en
-     * curso para ese libro, WorkManager ignora la petición duplicada y el
-     * libro nunca se procesa dos veces en paralelo; cuando el trabajo
-     * anterior ya terminó, KEEP permite encolarlo de nuevo con normalidad.
+     * The job in [ImportStatusStore] uses a deterministic per-book id
+     * ("reprocess_<bookId>"), so requesting it twice updates the same status
+     * card instead of creating orphan notices. The unique work is enqueued
+     * with [ExistingWorkPolicy.KEEP]: if a re-analysis for that book is
+     * already pending or running, WorkManager ignores the duplicate and the
+     * book is never processed twice in parallel; once the previous work has
+     * finished, KEEP lets it be enqueued again normally.
      *
-     * @return id del job de estado, o null si el libro no existe.
+     * @return the status job id, or null if the book does not exist.
      */
     suspend fun enqueueReprocess(bookId: String): String? {
         val book = database.bookDao().getById(bookId) ?: return null
@@ -146,9 +146,9 @@ class BookRepository(
         ImportStatusStore.add(
             ImportJob(
                 id = jobId,
-                displayName = "Reanalizando «${book.title}»",
+                displayName = context.getString(R.string.import_reprocess_name, book.title),
                 state = ImportJobState.QUEUED,
-                message = "En cola"
+                message = context.getString(R.string.import_queued)
             )
         )
         val request = OneTimeWorkRequestBuilder<BookReprocessWorker>()

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Selection menu -->
+    <string name="reader_action_highlight">Resaltar</string>
+    <string name="reader_action_define">Definir</string>
+    <string name="reader_action_explain">Explicar</string>
+    <string name="reader_action_ask">Preguntar</string>
+
+    <!-- Highlight colors -->
+    <string name="reader_color_yellow">Amarillo</string>
+    <string name="reader_color_green">Verde</string>
+    <string name="reader_color_blue">Azul</string>
+    <string name="reader_color_pink">Rosa</string>
+    <string name="reader_color_purple">Morado</string>
+
+    <!-- Themes -->
+    <string name="reader_theme_auto">Auto</string>
+    <string name="reader_theme_light">Claro</string>
+    <string name="reader_theme_sepia">Sepia</string>
+    <string name="reader_theme_dark">Oscuro</string>
+    <string name="reader_theme_black">Negro</string>
+
+    <!-- Built-in fonts -->
+    <string name="reader_font_serif">Serif</string>
+    <string name="reader_font_sans">Sans</string>
+    <string name="reader_font_light">Ligera</string>
+    <string name="reader_font_condensed">Condensada</string>
+    <string name="reader_font_medium">Media</string>
+    <string name="reader_font_mono">Mono</string>
+    <string name="reader_font_typewriter">Máquina</string>
+    <string name="reader_font_casual">Informal</string>
+    <string name="reader_font_cursive">Manuscrita</string>
+
+    <!-- PDF viewer -->
+    <string name="reader_pdf_open_error">No se pudo abrir el PDF</string>
+    <string name="reader_pdf_page">Página %1$d</string>
+</resources>

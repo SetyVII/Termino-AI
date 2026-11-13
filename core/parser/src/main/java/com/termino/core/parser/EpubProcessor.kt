@@ -18,7 +18,7 @@ import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
 import org.jsoup.safety.Safelist
 
-class EpubProcessor {
+class EpubProcessor(private val labels: ParserLabels = ParserLabels()) {
 
     companion object {
         /**
@@ -28,7 +28,7 @@ class EpubProcessor {
          */
         private val leadingChapterNumber = Regex("^\\s*(\\d{1,3}(?:\\.\\d{1,3}){0,3})\\.?[ \\t\\n]+")
 
-        /** Explicit word form, e.g. "Capítulo 4", "Chapter 12", "Cap. 3". */
+        /** Explicit word form, e.g. "Chapter 12", "Chap. 3", "Capítulo 4". */
         private val chapterWordAndNumber = Regex(
             "^\\s*(?:cap[íi]tulo|cap|chapter|chap)\\.?[ \\t]+(\\d{1,3})\\b",
             RegexOption.IGNORE_CASE
@@ -46,8 +46,8 @@ class EpubProcessor {
         private val rasterExtensions = setOf("jpg", "jpeg", "png", "webp", "bmp")
         private val photoExtensions = setOf("jpg", "jpeg", "webp", "bmp")
 
-        // Ids semánticos del EPUB. Se anclan a principio/fin para no capturar
-        // variantes como "Sec5Heading" o "AffiliationText".
+        // Semantic EPUB ids. Anchored at both ends so variants such as
+        // "Sec5Heading" or "AffiliationText" are not captured.
         private val AFFILIATION_ID = Regex("^Aff\\d+$", RegexOption.IGNORE_CASE)
         private val CONTACT_ID = Regex("^ContactOfAuthor\\d+$", RegexOption.IGNORE_CASE)
         private val SECTION_ID = Regex("^Sec\\d+$", RegexOption.IGNORE_CASE)
@@ -85,23 +85,23 @@ class EpubProcessor {
 
         val containerFile = File(extractDir, "META-INF/container.xml")
         if (!containerFile.exists()) {
-            throw IllegalArgumentException("El EPUB no contiene META-INF/container.xml")
+            throw IllegalArgumentException("The EPUB has no META-INF/container.xml")
         }
         if (File(extractDir, "META-INF/encryption.xml").exists()) {
-            throw IllegalArgumentException("Este EPUB parece estar protegido con DRM y no se puede abrir")
+            throw IllegalArgumentException("This EPUB appears to be DRM-protected and cannot be opened")
         }
 
         val container = Jsoup.parse(containerFile, "UTF-8", "", Parser.xmlParser())
         val opfPath = container.select("rootfile").firstOrNull()?.attr("full-path")
-            ?: throw IllegalArgumentException("El EPUB no declara un archivo OPF")
+            ?: throw IllegalArgumentException("The EPUB does not declare an OPF file")
         val opfFile = safeFile(extractDir, opfPath)
-            ?: throw IllegalArgumentException("Ruta OPF no válida")
-        if (!opfFile.exists()) throw IllegalArgumentException("No se encontró el OPF del EPUB")
+            ?: throw IllegalArgumentException("Invalid OPF path")
+        if (!opfFile.exists()) throw IllegalArgumentException("The EPUB OPF file was not found")
 
         val opf = Jsoup.parse(opfFile, "UTF-8", "", Parser.xmlParser())
         val opfDir = opfFile.parentFile ?: extractDir
         val title = firstText(opf, "title") ?: opfFile.nameWithoutExtension
-        val author = firstText(opf, "creator") ?: "Autor desconocido"
+        val author = firstText(opf, "creator") ?: labels.unknownAuthor
         val language = firstText(opf, "language")
         val description = firstText(opf, "description")
 
@@ -125,7 +125,7 @@ class EpubProcessor {
 
         val tocMap = buildTocMap(opf, opfDir, manifest, extractDir)
         val spineIds = opf.select("spine > itemref").mapNotNull { it.attr("idref").takeIf(String::isNotBlank) }
-        if (spineIds.isEmpty()) throw IllegalArgumentException("El EPUB no tiene capítulos en el spine")
+        if (spineIds.isEmpty()) throw IllegalArgumentException("The EPUB spine has no chapters")
 
         val assetMap = LinkedHashMap<String, ParsedAsset>()
         val chapters = mutableListOf<ParsedChapter>()
@@ -143,10 +143,10 @@ class EpubProcessor {
                 ?: return@forEach
             val body = document.body() ?: return@forEach
 
-            // Referencias semánticas del EPUB (afiliaciones, contacto,
-            // secciones, figuras, tablas y bibliografía). Se extraen antes
-            // del barrido heurístico de notas/citas para que sus ids no se
-            // confundan con notas al pie.
+            // Semantic EPUB references (affiliations, contact, sections,
+            // figures, tables and bibliography). Extracted before the
+            // heuristic footnote/citation sweep so their ids are not
+            // mistaken for footnotes.
             extractSemanticReferences(body, chapterIndex, references)
 
             body.select("[id]").forEach { element ->
@@ -154,14 +154,11 @@ class EpubProcessor {
                 if (id.isBlank()) return@forEach
                 val tag = element.tagName().lowercase()
                 if (tag !in setOf("li", "aside", "p", "div", "span")) return@forEach
-                // Descarta contenedores reales de notas (una sección de
-                // notas al pie completa, una bibliografía, una lista de
-                // referencias), pero NO notas individuales que contengan
-                // párrafos con id propio: un <div class="FootnoteContent"
-                // id="Fn1"> con un <p id="Par5"> dentro es una nota válida.
-                // La comprobación anterior (element.select("[id]").size > 1)
-                // descartaba exactamente esas notas y dejaba book_references
-                // sin ninguna clave Fn*.
+                // Skip real note containers (a whole footnotes section, a
+                // bibliography, a reference list), but NOT individual notes
+                // that contain paragraphs with their own id: a
+                // <div class="FootnoteContent" id="Fn1"> with a <p id="Par5">
+                // inside is a valid note.
                 val containerMarker = (element.className() + " " + id).lowercase()
                 if (containerMarker.contains("section") ||
                     containerMarker.contains("notes") ||
@@ -198,9 +195,9 @@ class EpubProcessor {
                 val content = TextUtils.collapseWhitespace(cleanElement.text()).take(4000)
                 if (content.length < 20) return@forEach
                 val numeric = Regex("\\d+").find(id)?.value
-                // Los ids de notas al pie (Fn1, Fn2...) se repiten en cada capítulo.
-                // Prefijamos la clave con el capítulo para que no se pisen entre sí;
-                // el anchor conserva el id original para resolver href="#Fn1".
+                // Footnote ids (Fn1, Fn2...) repeat in every chapter, so the
+                // key is prefixed with the chapter to keep them apart; the
+                // anchor keeps the original id to resolve href="#Fn1".
                 val isFootnote = marker.contains("footnote") ||
                     marker.contains("endnote") ||
                     marker.contains("doc-footnote") ||
@@ -259,10 +256,10 @@ class EpubProcessor {
                 link.removeAttr("style")
             }
 
-            // Las tablas HTML se rasterizan a PNG para que el lector nativo
-            // las muestre como una rejilla real (con colspan) en vez de
-            // linealizarlas como texto. El texto se conserva en plainText
-            // para que el índice RAG siga encontrando el contenido.
+            // HTML tables are rasterized to PNG so the native reader shows
+            // them as a real grid (with colspan) instead of linearized text.
+            // The text is kept in plainText so the RAG index still finds the
+            // content.
             val tableReplacements = replaceTables(body, assetMap)
 
             val safelist = Safelist.relaxed()
@@ -300,7 +297,7 @@ class EpubProcessor {
                     paragraph.replaceWith(
                         Element("img")
                             .attr("src", "assets/${replacement.asset.name}")
-                            .attr("alt", replacement.caption.ifBlank { "Tabla" })
+                            .attr("alt", replacement.caption.ifBlank { labels.table })
                     )
                 }
             }
@@ -313,7 +310,7 @@ class EpubProcessor {
             val chapterTitle = tocMap[item.file.canonicalPath]
                 ?: body.selectFirst("h1, h2, h3")?.text()?.trim()?.takeIf { it.isNotBlank() }
                 ?: document.title().trim().takeIf { it.isNotBlank() }
-                ?: "Capítulo ${chapterIndex + 1}"
+                ?: labels.chapter(chapterIndex + 1)
 
             chapters.add(
                 ParsedChapter(
@@ -330,11 +327,11 @@ class EpubProcessor {
         }
 
         if (chapters.isEmpty()) {
-            throw IllegalArgumentException("No se pudo extraer texto legible del EPUB")
+            throw IllegalArgumentException("Could not extract readable text from the EPUB")
         }
 
-        // Reescribe los enlaces internos del libro a un esquema propio para que
-        // el lector pueda navegar entre capítulos (p. ej. la página "Contents").
+        // Rewrite the book's internal links to a custom scheme so the reader
+        // can navigate between chapters (e.g. the "Contents" page).
         val fileToIndex = chapterSources.associate { source ->
             source.file.canonicalPath to source.index
         }
@@ -353,8 +350,8 @@ class EpubProcessor {
 
         val cover = findCover(opf, manifest)
         ParsedBook(
-            title = title.ifBlank { "Libro sin título" },
-            author = author.ifBlank { "Autor desconocido" },
+            title = title.ifBlank { labels.untitledBook },
+            author = author.ifBlank { labels.unknownAuthor },
             language = language,
             description = description?.takeIf { it.isNotBlank() },
             format = BookFormat.EPUB,
@@ -368,17 +365,17 @@ class EpubProcessor {
     }
 
     /**
-     * Extrae las referencias que el EPUB marca semánticamente y que el lector
-     * necesita para resolver los enlaces internos:
+     * Extracts the references the EPUB marks semantically, which the reader
+     * needs to resolve internal links:
      *
-     * - `Aff*`: afiliaciones de autor ("Renmin University...").
-     * - `ContactOfAuthor*`: datos de contacto.
-     * - `Sec*`: encabezados de sección (3.4.4, 11.2...).
-     * - `Fig*` / `Tab*`: figuras y tablas.
-     * - `Bib*`: secciones de bibliografía.
+     * - `Aff*`: author affiliations ("Renmin University...").
+     * - `ContactOfAuthor*`: contact details.
+     * - `Sec*`: section headings (3.4.4, 11.2...).
+     * - `Fig*` / `Tab*`: figures and tables.
+     * - `Bib*`: bibliography sections.
      *
-     * Las referencias de navegación (Sec/Fig/Tab/Bib) no abren la hoja de
-     * referencias: el controlador las usa para hacer scroll al texto.
+     * Navigation references (Sec/Fig/Tab/Bib) do not open the references
+     * sheet: the controller uses them to scroll to the text.
      */
     private fun extractSemanticReferences(
         body: Element,
@@ -400,44 +397,44 @@ class EpubProcessor {
                         chapterIndex = chapterIndex,
                         id = id,
                         label = if (number.isNullOrBlank()) {
-                            "Afiliación"
+                            labels.affiliation
                         } else {
-                            "Afiliación $number"
+                            "${labels.affiliation} $number"
                         },
                         content = content
                     )
                 }
                 CONTACT_ID.matches(id) -> {
                     addSemanticReference(
-                        references, chapterIndex, id, "Contacto", element.text()
+                        references, chapterIndex, id, labels.contact, element.text()
                     )
                 }
                 SECTION_ID.matches(id) -> {
                     val heading = element.selectFirst("h1, h2, h3, h4, h5, h6")
                     val content = heading?.text() ?: element.text().take(200)
                     addSemanticReference(
-                        references, chapterIndex, id, "Sección", content
+                        references, chapterIndex, id, labels.sectionReference, content
                     )
                 }
                 FIGURE_ID.matches(id) -> {
                     val caption = element.selectFirst("figcaption, .Caption")?.text()
                         ?: element.text()
                     addSemanticReference(
-                        references, chapterIndex, id, "Figura", caption
+                        references, chapterIndex, id, labels.figure, caption
                     )
                 }
                 TABLE_ID.matches(id) -> {
                     val caption = element.selectFirst("caption, .Caption")?.text()
                         ?: element.text()
                     addSemanticReference(
-                        references, chapterIndex, id, "Tabla", caption
+                        references, chapterIndex, id, labels.table, caption
                     )
                 }
                 BIBLIOGRAPHY_ID.matches(id) -> {
                     val heading = element.selectFirst("h1, h2, h3, h4, h5, h6")
                     val content = heading?.text() ?: element.text().take(200)
                     addSemanticReference(
-                        references, chapterIndex, id, "Bibliografía", content
+                        references, chapterIndex, id, labels.bibliography, content
                     )
                 }
             }
@@ -466,9 +463,9 @@ class EpubProcessor {
     }
 
     /**
-     * Sustituye cada tabla HTML por un token temporal. El token se convierte
-     * en una imagen PNG después de limpiar el HTML, y su texto se inyecta en
-     * plainText para que el RAG no pierda el contenido tabular.
+     * Replaces every HTML table with a temporary token. The token becomes a
+     * PNG image after the HTML is cleaned, and its text is injected into
+     * plainText so the RAG index does not lose tabular content.
      */
     private fun replaceTables(
         body: Element,
@@ -484,9 +481,9 @@ class EpubProcessor {
             val captionElement = table.selectFirst("caption")
             val caption = captionElement?.text()?.trim().orEmpty()
             val captionHtml = captionElement?.html()?.trim().orEmpty()
-            // El texto de las celdas (sin la leyenda) se inyecta en plainText.
-            // La leyenda se conserva como texto real encima de la imagen para
-            // que el enlace "Table 3.1" pueda saltar a ella y sea buscable.
+            // Cell text (without the caption) is injected into plainText.
+            // The caption stays as real text above the image so a
+            // "Table 3.1" link can jump to it and it remains searchable.
             val cellText = table.select("tr").text()
             val ragText = cellText.ifBlank { table.text() }
             replacements.add(TableReplacement(token, asset, ragText, caption))
@@ -532,9 +529,9 @@ class EpubProcessor {
     ): String {
         if (fileToIndex.isEmpty()) return html
         val document = Jsoup.parse(html)
-        // Jsoup.parse re-activa el pretty-print por defecto; el resto del
-        // pipeline serializa con prettyPrint(false), así que sin esto el
-        // capítulo reescrito cambiaría todo su formato al guardarse.
+        // Jsoup.parse turns pretty-print back on by default; the rest of the
+        // pipeline serializes with prettyPrint(false), so without this the
+        // rewritten chapter would change its whole formatting when saved.
         document.outputSettings().prettyPrint(false)
         var changed = false
         document.select("a[href]").forEach { link ->
@@ -615,7 +612,7 @@ class EpubProcessor {
                         if (read <= 0) break
                         totalBytes += read
                         if (totalBytes > 512L * 1024L * 1024L) {
-                            throw IllegalArgumentException("El EPUB supera el tamaño máximo admitido")
+                            throw IllegalArgumentException("The EPUB exceeds the maximum supported size")
                         }
                         stream.write(buffer, 0, read)
                     }
@@ -709,29 +706,28 @@ class EpubProcessor {
 
     /**
      * Derives the page label from the book's own visible numbering instead of
-     * the spine/content position, so citations ("[Capítulo 1 · página 2]") and
+     * the spine/content position, so citations ("[Chapter 1 · page 2]") and
      * the reader chrome match what the printed table of contents says.
      *
      * Priority:
-     * 1. Explicit "Capítulo/Chapter N" in the title.
-     * 2. Title that opens with a number: "1. Introduction" -> "Capítulo 1",
-     *    "2.1 Background" -> "Sección 2.1".
-     * 3. Position among accepted content chapters (last resort, same as
-     *    before for front matter with no numbers).
+     * 1. Explicit "Chapter N" (or "Capítulo N") in the title.
+     * 2. Title that opens with a number: "1. Introduction" -> "Chapter 1",
+     *    "2.1 Background" -> "Section 2.1".
+     * 3. Position among accepted content chapters (last resort, for front
+     *    matter with no numbers).
      *
-     * Example (EPUB "Large Language Models"): the chapter titled
-     * "1. Introduction" sits at chapterIndex 8 because of front matter, so it
-     * used to be cited as "Capítulo 9"; now it yields "Capítulo 1".
+     * Example: a chapter titled "1. Introduction" that sits at chapterIndex 8
+     * because of front matter is labeled "Chapter 1", not "Chapter 9".
      */
     private fun pageLabelFor(title: String, contentPosition: Int): String {
         chapterWordAndNumber.find(title)?.let { match ->
-            return "Capítulo ${match.groupValues[1]}"
+            return labels.chapter(match.groupValues[1])
         }
         leadingChapterNumber.find(title)?.let { match ->
             val number = match.groupValues[1]
-            return if (number.contains('.')) "Sección $number" else "Capítulo $number"
+            return if (number.contains('.')) labels.section(number) else labels.chapter(number)
         }
-        return "Capítulo ${contentPosition + 1}"
+        return labels.chapter(contentPosition + 1)
     }
 
     private fun assetFor(file: File, assets: MutableMap<String, ParsedAsset>): ParsedAsset {
@@ -856,9 +852,9 @@ class EpubProcessor {
     }
 
     /**
-     * Extrae el árbol jerárquico completo del índice (TOC) desde navigation.xhtml
-     * o toc.ncx en memoria (~10ms) sin descomprimir archivos en disco.
-     * Soporta niveles jerárquicos (Partes L0, Capítulos L1, Secciones L2, Subsecciones L3).
+     * Extracts the full hierarchical table of contents from nav.xhtml or
+     * toc.ncx in memory (~10 ms) without unpacking files to disk.
+     * Supports nested levels (parts L0, chapters L1, sections L2, subsections L3).
      */
     fun extractToc(bookFile: File): List<TocItem> {
         if (!bookFile.isFile) return emptyList()

@@ -19,7 +19,7 @@ class ProviderLogicTest {
         assertEquals("openrouter", ProviderEndpoint.suggestForKey("sk-or-v1-abc")?.id)
         assertEquals("gemini", ProviderEndpoint.suggestForKey("AIzaSyD")?.id)
         assertEquals("openai", ProviderEndpoint.suggestForKey("sk-proj-abc")?.id)
-        // "sk-" a secas lo usan varios proveedores: no se adivina.
+        // A bare "sk-" prefix is used by several providers: it is not guessed.
         assertNull(ProviderEndpoint.suggestForKey("sk-1234567890"))
         assertNull(ProviderEndpoint.suggestForKey("a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"))
     }

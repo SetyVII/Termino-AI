@@ -76,7 +76,7 @@ interface ChapterDao {
     @Query("DELETE FROM chapters WHERE bookId = :bookId")
     suspend fun deleteByBook(bookId: String)
 
-    /** Capítulos que contienen [query] (LIKE no distingue mayúsculas en ASCII). */
+    /** Chapters containing [query] (LIKE is case-insensitive for ASCII). */
     @Query(
         "SELECT chapterIndex, title, plainText FROM chapters " +
             "WHERE bookId = :bookId AND plainText LIKE '%' || :query || '%' " +

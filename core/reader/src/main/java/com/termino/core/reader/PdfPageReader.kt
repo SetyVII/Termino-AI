@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,9 +66,9 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * Renderizador de páginas con el PdfRenderer del sistema. PdfRenderer no es
- * seguro entre hilos: todas las operaciones pasan por un Mutex. Las páginas
- * ya renderizadas se guardan en una LRU por bytes.
+ * Page renderer backed by the system PdfRenderer. PdfRenderer is not thread
+ * safe: every operation goes through a Mutex. Rendered pages are kept in a
+ * byte-sized LRU cache.
  */
 class PdfPageRenderer(file: File) : Closeable {
     private val descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
@@ -80,7 +81,7 @@ class PdfPageRenderer(file: File) : Closeable {
 
     val pageCount: Int get() = renderer.pageCount
 
-    /** Relación ancho/alto de la página (para reservar el hueco antes de renderizar). */
+    /** Page aspect ratio (to reserve space before rendering). */
     suspend fun aspectRatio(index: Int): Float = withContext(Dispatchers.IO) {
         mutex.withLock {
             if (closed) return@withLock 0.707f
@@ -132,9 +133,9 @@ class PdfPageRenderer(file: File) : Closeable {
 }
 
 /**
- * Lector de PDF con la página original: paginador horizontal nativo,
- * pellizcar para ampliar, doble toque para alternar zoom y las mismas zonas
- * de toque que el lector de texto (bordes = pasar página, centro = interfaz).
+ * PDF reader showing the original page: native horizontal pager,
+ * pinch to zoom, double tap to toggle zoom and the same tap zones as the text
+ * reader (edges = turn page, center = toggle UI).
  */
 @Composable
 fun PdfPageReader(
@@ -156,7 +157,7 @@ fun PdfPageReader(
     }
     if (renderer == null) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No se pudo abrir el PDF", color = colors.muted)
+            Text(stringResource(R.string.reader_pdf_open_error), color = colors.muted)
         }
         return
     }
@@ -167,7 +168,7 @@ fun PdfPageReader(
     val scope = rememberCoroutineScope()
     val latestSettled by rememberUpdatedState(onPageSettled)
 
-    // Saltos externos (índice, búsqueda, botones): página contigua animada, lejana directa.
+    // External jumps (TOC, search, buttons): adjacent page animated, distant page instant.
     LaunchedEffect(currentPage) {
         val target = currentPage.coerceIn(0, (pageCount - 1).coerceAtLeast(0))
         if (pagerState.settledPage != target && !pagerState.isScrollInProgress) {
@@ -251,8 +252,8 @@ private fun ZoomablePdfPage(
         var offset by remember { mutableStateOf(Offset.Zero) }
         val scope = rememberCoroutineScope()
 
-        // Con zoom se vuelve a renderizar a más resolución (en pasos de 0,5x)
-        // para que el texto siga nítido en lugar de ampliar el bitmap base.
+        // When zoomed, re-render at a higher resolution (in 0.5x steps) so text
+        // stays sharp instead of scaling up the base bitmap.
         val zoomStep by remember {
             androidx.compose.runtime.derivedStateOf {
                 if (scale.value < 1.2f) 1f else (kotlin.math.round(scale.value.coerceAtMost(2.5f) * 2f) / 2f)
@@ -267,7 +268,7 @@ private fun ZoomablePdfPage(
             }
         }
 
-        // Al salir de la página se restablece el zoom.
+        // Zoom resets when leaving the page.
         LaunchedEffect(isCurrent) {
             if (!isCurrent && scale.value != 1f) {
                 scale.snapTo(1f)
@@ -286,8 +287,8 @@ private fun ZoomablePdfPage(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
-                    // Pellizco con dos dedos, o arrastre con uno si ya hay zoom.
-                    // Con zoom 1x un dedo se deja al paginador para pasar página.
+                    // Two-finger pinch, or one-finger drag when already zoomed.
+                    // At 1x, a single finger is left to the pager to turn pages.
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
                         do {
@@ -341,15 +342,15 @@ private fun ZoomablePdfPage(
                     .background(if (colors.isDark) Color(0xFF202020) else Color.White),
                 contentAlignment = Alignment.Center
             ) {
-                // En temas oscuros, las páginas que son sobre todo imagen (portadas,
-                // fotos) no se invierten (parecerían un negativo): solo se atenúan.
+                // In dark themes, mostly-image pages (covers, photos) are not
+                // inverted (they would look like a negative): they are only dimmed.
                 val photoPage = remember(bitmap) { bitmap?.let(::looksLikePhotoPage) ?: false }
                 val effectiveFilter = if (photoPage && colors.isDark) DIM_FILTER else colorFilter
                 Crossfade(targetState = hiRes ?: bitmap, animationSpec = tween(220), label = "pdf-page") { image ->
                     if (image != null) {
                         Image(
                             bitmap = image.asImageBitmap(),
-                            contentDescription = "Página ${index + 1}",
+                            contentDescription = stringResource(R.string.reader_pdf_page, index + 1),
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Fit,
                             colorFilter = effectiveFilter
@@ -387,9 +388,8 @@ private val DIM_FILTER = ColorFilter.colorMatrix(
 )
 
 /**
- * Muestreo barato (≈ 48×64 puntos): una página es "foto" si muchos píxeles
- * son de tono medio o con color. Las páginas de texto son casi todo blanco
- * con algo de negro.
+ * Cheap sampling (≈ 48×64 points): a page is a "photo" if many pixels are
+ * mid-tone or colored. Text pages are almost all white with some black.
  */
 private fun looksLikePhotoPage(bitmap: Bitmap): Boolean {
     val cols = 48
@@ -415,7 +415,7 @@ private fun looksLikePhotoPage(bitmap: Bitmap): Boolean {
 }
 private const val DOUBLE_TAP_ZOOM = 2.5f
 
-/** Oscuro: invierte luminancia (modo noche). Sepia: tiñe el blanco del papel. */
+/** Dark: inverts luminance (night mode). Sepia: tints the paper white. */
 private fun pageColorFilter(theme: ReaderTheme): ColorFilter? = when (theme) {
     ReaderTheme.AUTO, ReaderTheme.LIGHT -> null
     ReaderTheme.BLACK -> ColorFilter.colorMatrix(

@@ -69,15 +69,15 @@ class LibraryViewModel(
 
     fun importSampleEpub() {
         bookRepository.enqueueSample(
-            assetPath = "samples/muestra.epub",
-            displayName = "La biblioteca de Asterión (muestra EPUB)"
+            assetPath = "samples/sample.epub",
+            displayName = "La biblioteca de Asterión"
         )
     }
 
     fun importSamplePdf() {
         bookRepository.enqueueSample(
-            assetPath = "samples/muestra.pdf",
-            displayName = "Leer con IA (muestra PDF)"
+            assetPath = "samples/sample.pdf",
+            displayName = "Leer con IA"
         )
     }
 

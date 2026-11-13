@@ -5,18 +5,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RagPassageTest {
-    private val filler = (1..60).joinToString(" ") { "Frase de relleno número $it sin interés." }
+    private val filler = (1..60).joinToString(" ") { "Filler sentence number $it with no interest." }
 
     @Test
     fun shortChunkIsSentWhole() {
-        assertEquals("Texto corto.", bestPassage("Texto  corto.", listOf("texto"), 1500))
+        assertEquals("Short text.", bestPassage("Short  text.", listOf("short"), 1500))
     }
 
     @Test
     fun picksWindowWithQueryTermsNotTheBeginning() {
-        val content = "$filler La entropía cruzada mide la pérdida. La entropía se minimiza al entrenar. $filler"
-        val passage = bestPassage(content, listOf("entropía", "pérdida"), 400)
-        assertTrue(passage, passage.contains("entropía cruzada"))
+        val content = "$filler Cross entropy measures the loss. Entropy is minimized during training. $filler"
+        val passage = bestPassage(content, listOf("entropy", "loss"), 400)
+        assertTrue(passage, passage.contains("Cross entropy"))
         assertTrue(passage.length <= 402)
         assertTrue(passage.startsWith("…"))
     }

@@ -14,16 +14,16 @@ import kotlin.math.min
 import org.jsoup.nodes.Element
 
 /**
- * Rasteriza una tabla HTML a PNG para que el lector nativo (TextView +
- * Spannable) la muestre como una rejilla real, con cabeceras, colspan y
- * bordes, en lugar de linealizarla como texto.
+ * Rasterizes an HTML table to PNG so the native reader (TextView +
+ * Spannable) shows it as a real grid, with headers, colspan and borders,
+ * instead of linearized text.
  *
- * El bitmap se dibuja a 2000 px de ancho y el lector lo escala al ancho de su
- * columna; un toque sobre la imagen abre el visor con pinch-to-zoom, así que
- * las tablas de 7-8 columnas siguen siendo legibles.
+ * The bitmap is drawn 2000 px wide and the reader scales it to its column
+ * width; tapping the image opens the viewer with pinch-to-zoom, so 7-8
+ * column tables stay readable.
  *
- * No usa Context ni recursos: solo android.graphics, por lo que puede
- * ejecutarse dentro del parseo en segundo plano.
+ * It uses no Context or resources, only android.graphics, so it can run
+ * inside background parsing.
  */
 internal object TableBitmapRenderer {
 
@@ -54,8 +54,8 @@ internal object TableBitmapRenderer {
         val columnCount = grid.maxOfOrNull { it.size } ?: return null
         if (columnCount == 0) return null
 
-        // Descarta columnas completamente vacías (los EPUB técnicos suelen
-        // añadir una columna espaciadora al final de cada tabla).
+        // Drop fully empty columns (technical EPUBs often add a spacer
+        // column at the end of every table).
         val keepColumns = (0 until columnCount).filter { column ->
             grid.any { row -> row.getOrNull(column)?.text?.isNotBlank() == true }
         }
@@ -79,7 +79,7 @@ internal object TableBitmapRenderer {
             }
         }
 
-        // Ancho natural de cada columna a partir del texto sin envolver.
+        // Natural width of each column from the unwrapped text.
         val columnWidths = IntArray(keptColumnCount) { MIN_COLUMN_WIDTH }
         for (cell in cells) {
             val startColumn = remap[cell.col] ?: continue
@@ -105,7 +105,7 @@ internal object TableBitmapRenderer {
 
         fitColumnsToWidth(columnWidths)
 
-        // Altura de cada fila según el texto envuelto en el ancho final.
+        // Height of each row from the text wrapped at the final width.
         val rowHeights = IntArray(grid.size)
         val cellLayouts = HashMap<Cell, StaticLayout>()
         for (cell in cells) {
@@ -175,7 +175,7 @@ internal object TableBitmapRenderer {
             return rowTops[lastRow] + rowHeights[lastRow]
         }
 
-        // Fondos (cabecera y filas alternas).
+        // Backgrounds (header and alternating rows).
         for (cell in cells) {
             val startColumn = remap[cell.col] ?: continue
             val span = (cell.col until cell.col + cell.colspan).count { it in remap }
@@ -192,7 +192,7 @@ internal object TableBitmapRenderer {
             if (paint != null) canvas.drawRect(left, top, right, bottom, paint)
         }
 
-        // Bordes por celda: una celda con colspan no dibuja líneas internas.
+        // Per-cell borders: a cell with colspan draws no inner lines.
         for (cell in cells) {
             val startColumn = remap[cell.col] ?: continue
             val span = (cell.col until cell.col + cell.colspan).count { it in remap }
@@ -224,9 +224,9 @@ internal object TableBitmapRenderer {
     }
 
     /**
-     * Reparte el ancho disponible entre las columnas: encoge las anchas de
-     * forma proporcional y reparte el sobrante entre todas cuando la tabla es
-     * más estrecha que el lienzo.
+     * Distributes the available width among columns: shrinks wide ones
+     * proportionally and spreads the remainder across all of them when the
+     * table is narrower than the canvas.
      */
     private fun fitColumnsToWidth(widths: IntArray) {
         if (widths.isEmpty()) return
@@ -288,9 +288,9 @@ internal object TableBitmapRenderer {
     }
 
     /**
-     * Coloca las celdas en una rejilla resolviendo colspan/rowspan. Las celdas
-     * que ocupan varias posiciones guardan la misma instancia en cada hueco,
-     * pero solo se dibujan una vez, en su posición de origen.
+     * Places cells on a grid resolving colspan/rowspan. Cells spanning
+     * several slots store the same instance in each slot but are drawn only
+     * once, at their origin.
      */
     private fun buildGrid(rows: List<List<Element>>): List<List<Cell?>>? {
         val grid = mutableListOf<MutableList<Cell?>>()

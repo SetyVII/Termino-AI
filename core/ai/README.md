@@ -1,20 +1,20 @@
-# :core:ai — Cliente de IA compatible con OpenAI
+# :core:ai — OpenAI-compatible AI client
 
-Habla con cualquier API estilo OpenAI (OpenAI, Anthropic, Gemini, Mistral, DeepSeek, OpenRouter, Groq, xAI, GLM, Ollama, LM Studio, vLLM…) **sin catálogos de modelos escritos a mano**. No depende de la app ni de ningún otro módulo.
+Talks to any OpenAI-style API (OpenAI, Anthropic, Gemini, Mistral, DeepSeek, OpenRouter, Groq, xAI, GLM, Ollama, LM Studio, vLLM…) **without hand-written model catalogs**. It does not depend on the app or any other module.
 
 ## API
 
-| Tipo | Para qué |
+| Type | Purpose |
 |---|---|
-| `AiStreamingClient` | `stream()` (SSE como `Flow<AiStreamEvent>`), `complete()`, `fetchModels()` con metadatos, `ping()` |
-| `ProviderVerifier` | `verify(input, endpoint)`: resuelve la URL, lista modelos, elige y **prueba** con una petición real |
-| `ProviderEndpoint` | Directorio de URLs base y prefijos de clave (solo para *sugerir* proveedor) |
-| `ReasoningEffort`, `AiRequest`, `AiMessage`, `ProviderModel` | Modelos de datos |
-| `isLocalEndpoint(url)` | Detecta servidores de red local (claves opcionales) |
+| `AiStreamingClient` | `stream()` (SSE as `Flow<AiStreamEvent>`), `complete()`, `fetchModels()` with metadata, `ping()` |
+| `ProviderVerifier` | `verify(input, endpoint)`: resolves the URL, lists models, picks them and **tests** them with a real request |
+| `ProviderEndpoint` | Directory of base URLs and key prefixes (only used to *suggest* a provider) |
+| `ReasoningEffort`, `AiRequest`, `AiMessage`, `ProviderModel` | Data models |
+| `isLocalEndpoint(url)` | Detects local network servers (keys optional) |
 
 ```kotlin
 val client = AiStreamingClient()
-client.stream(baseUrl, apiKey, AiRequest(model, listOf(AiMessage("user", "Hola")))).collect { event -> … }
+client.stream(baseUrl, apiKey, AiRequest(model, listOf(AiMessage("user", "Hello")))).collect { event -> … }
 
 when (val r = ProviderVerifier(client).verify(input = apiKey, endpoint = ProviderEndpoint.known.first())) {
     is VerifyResult.Success -> r.connection.chatModel
@@ -22,13 +22,13 @@ when (val r = ProviderVerifier(client).verify(input = apiKey, endpoint = Provide
 }
 ```
 
-## Decisiones
+## Design decisions
 
-- **Forma de petición aprendida** (`RequestShape`): si el proveedor responde 400 por `reasoning_effort`, `max_tokens` o `temperature`, se reintenta sin ese parámetro (o con `max_completion_tokens`) y se recuerda por modelo.
-- La clave solo se envía al proveedor elegido; nunca se prueba contra varios.
+- **Learned request shape** (`RequestShape`): if the provider answers 400 because of `reasoning_effort`, `max_tokens` or `temperature`, the request is retried without that parameter (or with `max_completion_tokens`) and the result is remembered per model.
+- The key is only sent to the chosen provider; it is never tried against several.
 
-## Por dónde mejorar
+## Possible improvements
 
-- Soporte nativo de la API de Anthropic/Gemini (hoy vía su capa compatible con OpenAI).
-- Herramientas (*function calling*) y respuestas estructuradas.
-- Persistir `RequestShape` aprendido entre sesiones.
+- Native Anthropic/Gemini APIs (currently through their OpenAI-compatible layer).
+- Tools (*function calling*) and structured output.
+- Persisting the learned `RequestShape` across sessions.

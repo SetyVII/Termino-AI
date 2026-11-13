@@ -1,20 +1,20 @@
-# Avisos y atribuciones
+# Notices and attributions
 
-## Proyecto base
+## Base project
 
-**Término** está basado en **[ReadAny](https://github.com/codedogQBY/ReadAny)**
-de codedogQBY / ReadAny Team, publicado bajo la
+**Término** is based on **[ReadAny](https://github.com/codedogQBY/ReadAny)**
+by codedogQBY / ReadAny Team, released under the
 [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.html).
 
-Término reutiliza la idea, el diseño de la experiencia (lector + asistente de IA
-con RAG local, BYOK, subrayados y chat con citas) y el enfoque de producto de
-ReadAny, reimplementados de forma nativa para Android (Kotlin + Jetpack Compose,
-sin WebView). En cumplimiento de la GPL-3.0, Término se distribuye bajo la misma
-licencia (ver [`LICENSE`](LICENSE)) y su código fuente completo está disponible.
+Término reuses ReadAny's idea, experience design (reader + AI assistant with
+local RAG, BYOK, highlights and chat with citations) and product approach,
+reimplemented natively for Android (Kotlin + Jetpack Compose, no WebView). In
+compliance with the GPL-3.0, Término is distributed under the same license
+(see [`LICENSE`](LICENSE)) and its full source code is available.
 
-## Dependencias de terceros
+## Third-party dependencies
 
-| Componente | Licencia |
+| Component | License |
 |---|---|
 | Kotlin, kotlinx.coroutines | Apache-2.0 |
 | AndroidX (Core, Activity, Lifecycle, Room, WorkManager, DataStore, SplashScreen) | Apache-2.0 |
@@ -22,16 +22,16 @@ licencia (ver [`LICENSE`](LICENSE)) y su código fuente completo está disponibl
 | Material Components for Android | Apache-2.0 |
 | OkHttp / Okio (Square) | Apache-2.0 |
 | jsoup (Jonathan Hedley) | MIT |
-| PdfBox-Android (Tom Roush, port de Apache PDFBox) | Apache-2.0 |
+| PdfBox-Android (Tom Roush, port of Apache PDFBox) | Apache-2.0 |
 
-Todas son compatibles con la GPL-3.0. Los textos completos de las licencias
-Apache-2.0 y MIT están en <https://www.apache.org/licenses/LICENSE-2.0> y
+All are compatible with the GPL-3.0. The full Apache-2.0 and MIT license texts
+are available at <https://www.apache.org/licenses/LICENSE-2.0> and
 <https://opensource.org/license/mit>.
 
-## Recursos
+## Assets
 
-- Las imágenes y textos de los libros de muestra (`app/src/main/assets/samples/`)
-  son originales de este proyecto. Las imágenes se generaron con las fuentes
-  Noto Serif / Noto Sans (SIL Open Font License 1.1).
-- Las fuentes que el usuario importe en la app quedan bajo su propia licencia y
-  no se distribuyen con Término.
+- The images and texts of the sample books (`app/src/main/assets/samples/`)
+  are original to this project. The images were generated with the Noto Serif /
+  Noto Sans fonts (SIL Open Font License 1.1).
+- Fonts the user imports into the app remain under their own license and are
+  not distributed with Término.

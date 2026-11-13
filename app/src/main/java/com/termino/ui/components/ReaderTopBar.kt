@@ -1,6 +1,8 @@
 package com.termino.ui.components
 
+import com.termino.R
 import com.termino.core.reader.ReaderColors
+import androidx.compose.ui.res.stringResource
 import com.termino.core.reader.ReaderFont
 import com.termino.core.reader.ReaderTheme
 import com.termino.core.reader.readerColors
@@ -111,7 +113,7 @@ fun ReaderTopBar(
             ) {
                 Icon(
                     Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Volver a la biblioteca",
+                    contentDescription = stringResource(R.string.back_to_library),
                     tint = colors.foreground,
                     modifier = Modifier.size(iconSize)
                 )
@@ -132,7 +134,7 @@ fun ReaderTopBar(
                 Text(
                     text = state.currentChapter?.title
                         ?: state.currentChapter?.pageLabel
-                        ?: "Cargando…",
+                        ?: stringResource(R.string.loading),
                     fontSize = if (compact) 10.sp else 10.5.sp,
                     color = colors.muted,
                     maxLines = 1,
@@ -143,7 +145,7 @@ fun ReaderTopBar(
                 IconButton(onClick = onSearch, modifier = Modifier.size(iconButtonSize)) {
                     Icon(
                         androidx.compose.material.icons.Icons.Outlined.Search,
-                        contentDescription = "Buscar en el libro",
+                        contentDescription = stringResource(R.string.search_in_book),
                         tint = colors.foreground,
                         modifier = Modifier.size(iconSize)
                     )
@@ -165,7 +167,7 @@ fun ReaderTopBar(
             ) {
                 Icon(
                     Icons.Outlined.MenuBook,
-                    contentDescription = "Contenido",
+                    contentDescription = stringResource(R.string.contents),
                     tint = colors.foreground,
                     modifier = Modifier.size(iconSize)
                 )
@@ -177,9 +179,9 @@ fun ReaderTopBar(
                 Icon(
                     Icons.Outlined.AutoAwesome,
                     contentDescription = if (state.paneMode == AiPaneMode.MINIMIZED) {
-                        "Mostrar asistente"
+                        stringResource(R.string.assistant_show)
                     } else {
-                        "Ocultar asistente"
+                        stringResource(R.string.assistant_hide)
                     },
                     tint = if (state.paneMode == AiPaneMode.MINIMIZED) {
                         colors.foreground
@@ -243,7 +245,7 @@ private fun ThemeMenu(
         ) {
             Icon(
                 Icons.Outlined.Palette,
-                contentDescription = "Tema de lectura",
+                contentDescription = stringResource(R.string.reading_theme),
                 tint = colors.foreground,
                 modifier = Modifier.size(iconSize)
             )
@@ -269,7 +271,7 @@ private fun ThemeMenu(
                             )
                             Spacer(Modifier.width(10.dp))
                             Text(
-                                text = theme.label,
+                                text = stringResource(theme.labelRes),
                                 fontSize = 13.sp,
                                 color = colors.foreground
                             )
@@ -301,7 +303,7 @@ private fun ThemeMenu(
                         )
                         Spacer(Modifier.width(10.dp))
                         Text(
-                            text = "Cuidado de la vista",
+                            text = stringResource(R.string.eye_care),
                             fontSize = 13.sp,
                             color = colors.foreground
                         )
@@ -346,7 +348,7 @@ private fun TypeMenu(
         ) {
             Icon(
                 Icons.Outlined.FormatSize,
-                contentDescription = "Tipografía",
+                contentDescription = stringResource(R.string.typography),
                 tint = colors.foreground,
                 modifier = Modifier.size(iconSize)
             )
@@ -362,7 +364,7 @@ private fun TypeMenu(
                     .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
                 Text(
-                    text = "Tipografía",
+                    text = stringResource(R.string.typography),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.foreground
@@ -373,7 +375,7 @@ private fun TypeMenu(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Tamaño",
+                        text = stringResource(R.string.font_size),
                         modifier = Modifier.weight(1f),
                         fontSize = 12.sp,
                         color = colors.muted
@@ -385,7 +387,7 @@ private fun TypeMenu(
                     ) {
                         Icon(
                             Icons.Outlined.Remove,
-                            contentDescription = "Reducir letra",
+                            contentDescription = stringResource(R.string.font_decrease),
                             tint = colors.foreground,
                             modifier = Modifier.size(20.dp)
                         )
@@ -404,7 +406,7 @@ private fun TypeMenu(
                     ) {
                         Icon(
                             Icons.Outlined.Add,
-                            contentDescription = "Aumentar letra",
+                            contentDescription = stringResource(R.string.font_increase),
                             tint = colors.foreground,
                             modifier = Modifier.size(20.dp)
                         )
@@ -412,7 +414,7 @@ private fun TypeMenu(
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Interlineado",
+                    text = stringResource(R.string.line_height),
                     fontSize = 12.sp,
                     color = colors.muted
                 )
@@ -428,7 +430,7 @@ private fun TypeMenu(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Fuente",
+                    text = stringResource(R.string.font),
                     fontSize = 12.sp,
                     color = colors.muted
                 )
@@ -450,7 +452,7 @@ private fun TypeMenu(
     }
 }
 
-/** Marcador de página con transición de relleno (escala + fundido). */
+/** Page bookmark button with a fill transition (scale + fade). */
 @Composable
 private fun BookmarkButton(
     bookmarked: Boolean,
@@ -480,7 +482,7 @@ private fun BookmarkButton(
             Icon(
                 if (marked) androidx.compose.material.icons.Icons.Outlined.Bookmark
                 else androidx.compose.material.icons.Icons.Outlined.BookmarkBorder,
-                contentDescription = if (marked) "Quitar marcador" else "Añadir marcador",
+                contentDescription = if (marked) stringResource(R.string.bookmark_remove) else stringResource(R.string.bookmark_add),
                 tint = if (marked) colors.accent else colors.foreground,
                 modifier = Modifier.size(iconSize)
             )
@@ -500,14 +502,14 @@ private fun PdfModeButton(
         Icon(
             if (state.pdfOriginalPages) androidx.compose.material.icons.Icons.AutoMirrored.Outlined.Article
             else androidx.compose.material.icons.Icons.Outlined.PictureAsPdf,
-            contentDescription = if (state.pdfOriginalPages) "Ver como texto" else "Ver página original",
+            contentDescription = if (state.pdfOriginalPages) stringResource(R.string.pdf_view_text) else stringResource(R.string.pdf_view_original),
             tint = colors.foreground,
             modifier = Modifier.size(iconSize)
         )
     }
 }
 
-/** Menú "más" del móvil: búsqueda, aspecto y modo PDF caben sin apretar la barra. */
+/** Phone overflow menu: search, appearance and PDF mode fit without crowding the bar. */
 @Composable
 private fun CompactOverflow(
     state: ReaderUiState,
@@ -523,7 +525,7 @@ private fun CompactOverflow(
         IconButton(onClick = { expanded = true }, modifier = Modifier.size(buttonSize)) {
             Icon(
                 androidx.compose.material.icons.Icons.Outlined.MoreVert,
-                contentDescription = "Más opciones",
+                contentDescription = stringResource(R.string.more_options),
                 tint = colors.foreground,
                 modifier = Modifier.size(iconSize)
             )
@@ -534,12 +536,12 @@ private fun CompactOverflow(
             containerColor = colors.surface
         ) {
             DropdownMenuItem(
-                text = { Text("Buscar en el libro", color = colors.foreground) },
+                text = { Text(stringResource(R.string.search_in_book), color = colors.foreground) },
                 leadingIcon = { Icon(androidx.compose.material.icons.Icons.Outlined.Search, null, tint = colors.foreground) },
                 onClick = { expanded = false; onSearch() }
             )
             DropdownMenuItem(
-                text = { Text("Aspecto y tipografía", color = colors.foreground) },
+                text = { Text(stringResource(R.string.appearance_typography), color = colors.foreground) },
                 leadingIcon = { Icon(Icons.Outlined.FormatSize, null, tint = colors.foreground) },
                 onClick = { expanded = false; onOpenAppearance() }
             )
@@ -547,7 +549,7 @@ private fun CompactOverflow(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            if (state.pdfOriginalPages) "Ver como texto" else "Ver página original",
+                            if (state.pdfOriginalPages) stringResource(R.string.pdf_view_text) else stringResource(R.string.pdf_view_original),
                             color = colors.foreground
                         )
                     },

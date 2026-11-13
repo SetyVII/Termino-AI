@@ -20,7 +20,6 @@ import android.text.style.ClickableSpan
 import android.text.style.ImageSpan
 import android.text.style.SuperscriptSpan
 import android.text.style.URLSpan
-import android.util.Log
 import android.util.TypedValue
 import android.view.ActionMode
 import android.view.HapticFeedbackConstants
@@ -64,11 +63,7 @@ data class ReaderReference(
             lower.startsWith("bib") ||
             lower.contains("footnote") ||
             lower.contains("endnote") ||
-            lower.contains("citation") ||
-            label.startsWith("Afiliación", ignoreCase = true) ||
-            label.startsWith("Contacto", ignoreCase = true) ||
-            label.startsWith("Nota", ignoreCase = true) ||
-            label.startsWith("Bibliografía", ignoreCase = true)
+            lower.contains("citation")
     }
 }
 
@@ -111,16 +106,15 @@ interface ReaderInteractionListener {
     fun onEndOfChapter()
     fun onStartOfChapter()
     fun onTap()
-    /** Si los toques en los bordes deben pasar página. */
+    /** Whether taps on the edges turn the page. */
     fun tapZonesEnabled(): Boolean = true
-    /** Paso de página con gesto (toque en borde, deslizar o volumen). */
+    /** Page turn by gesture (edge tap, swipe or volume key). */
     fun onUserPageTurn() {}
-    /** Tamaño de letra provisional mientras se pellizca (null al terminar). */
+    /** Provisional font size while pinching (null when finished). */
     fun onFontSizePreview(size: Int?) {}
-    /** Pellizco terminado: nuevo tamaño de letra. */
+    /** Pinch finished: new font size. */
     fun onFontSizeGesture(size: Int) {}
     fun onLinkTapped(url: String)
-    fun onDebug(message: String)
 }
 
 private data class ReaderStyle(
@@ -131,12 +125,12 @@ private data class ReaderStyle(
 )
 
 /**
- * Motor de lectura nativo: pinta HTML de un capítulo en un TextView con
- * Spannable (subrayados, referencias, imágenes, enlaces internos), pagina por
- * viewport y notifica todo a través de [ReaderInteractionListener].
+ * Native reading engine: renders a chapter's HTML into a TextView with
+ * Spannable (highlights, references, images, internal links), paginates by
+ * viewport and reports everything through [ReaderInteractionListener].
  *
- * @param assetDir carpeta donde están las imágenes del libro (las rutas
- * relativas del HTML se resuelven contra ella).
+ * @param assetDir folder holding the book's images (relative paths in the
+ * HTML are resolved against it).
  */
 class NativeReaderController(
     private val context: Context,
@@ -152,12 +146,12 @@ class NativeReaderController(
         private const val ACTION_EXPLAIN = 1005
         private const val ACTION_ASK = 1006
 
-        // "[5]", "[ 5 ]", "[13, 18]", "[3-5]", "[ 7 – 9 ]": espacios opcionales dentro de los corchetes.
+        // "[5]", "[ 5 ]", "[13, 18]", "[3-5]", "[ 7 – 9 ]": optional spaces inside the brackets.
         private val REFERENCE_PATTERN = Regex("\\[\\s*(\\d+(?:\\s*[,;–-]\\s*\\d+)*)\\s*]")
         private val REFERENCE_RANGE = Regex("(\\d+)\\s*[-,–]\\s*(\\d+)")
         private val REFERENCE_NUMBER = Regex("\\d+")
-        // Los EPUB técnicos usan NBSP en los números de sección ("11.2\u00A0").
-        // Se normaliza a espacio (1:1, sin cambiar offsets) antes de buscar.
+        // Technical EPUBs use NBSP in section numbers ("11.2\u00A0").
+        // It is normalized to a space (1:1, offsets unchanged) before searching.
         private val NBSP_REGEX = Regex("[\\u00A0\\u2007\\u202F]")
         private const val MAX_RANGE_EXPANSION = 12
         private const val PAGE_OUT_MS = 140L
@@ -169,7 +163,7 @@ class NativeReaderController(
 
     var listener: ReaderInteractionListener? = null
 
-    /** Resuelve la fuente elegida (sistema o importada) a un Typeface. */
+    /** Resolves the chosen font (system or imported) to a Typeface. */
     var typefaceResolver: ((ReaderFont) -> Typeface)? = null
 
     private val handler = Handler(Looper.getMainLooper())
@@ -179,23 +173,23 @@ class NativeReaderController(
     private var content: ReaderContent? = null
     private var style = ReaderStyle()
     private val highlightSpans = LinkedHashMap<String, HighlightSpan>()
-    // Imágenes del capítulo actual: src original del <img> -> ruta absoluta
-    // del archivo decodificado por imageFor(). Permite resolver el toque en
-    // un ImageSpan a la ruta del archivo original (sin extraer el bitmap del
-    // drawable en runtime, que perdería calidad).
+    // Images of the current chapter: original <img> src -> absolute path of
+    // the file decoded by imageFor(). Lets a tap on an ImageSpan resolve to
+    // the original file (instead of extracting the bitmap from the drawable
+    // at runtime, which would lose quality).
     private val loadedImageSources = mutableMapOf<String, String>()
     private val imageCache = LruCache<String, Bitmap>(24)
     private var referencesByKey: Map<String, ReaderReference> = emptyMap()
     private var referencesByNumber: Map<String, ReaderReference> = emptyMap()
-    // En un mismo libro pueden coexistir notas al pie ("Fn1") y bibliografía
-    // ("CR1") con el mismo número. Los superíndices deben resolver a la nota
-    // al pie y los corchetes [1] a la bibliografía.
+    // A book can contain both footnotes ("Fn1") and bibliography entries
+    // ("CR1") with the same number. Superscripts must resolve to the footnote
+    // and brackets [1] to the bibliography.
     private var footnoteByNumber: Map<String, ReaderReference> = emptyMap()
     private var citationByNumber: Map<String, ReaderReference> = emptyMap()
     private var referencesByAnchor: Map<String, ReaderReference> = emptyMap()
-    // Offsets de caracteres exactos para cada elemento con id en el capítulo,
-    // extraídos de los anclas inyectados. Permite saltar a cualquier ancla en O(1)
-    // sin depender de coincidencias heurísticas de texto.
+    // Exact character offsets for every element with an id in the chapter,
+    // taken from the injected anchors. Allows jumping to any anchor in O(1)
+    // without relying on heuristic text matching.
     private var anchorOffsets: Map<String, Int> = emptyMap()
     private var lastPage = -1
     private var lastTotal = -1
@@ -210,9 +204,9 @@ class NativeReaderController(
         if (rawEnd > text.length) return
         val selected = text.subSequence(rawStart, rawEnd).toString()
         if (selected.isNotBlank()) {
-            // El usuario puede arrastrar los tiradores hasta un espacio o un salto de línea:
-            // recortamos los extremos para que el subrayado y el texto enviado a la IA no
-            // incluyan espacios sobrantes. Si solo había espacios, caemos al ajuste por palabra.
+            // The user can drag the handles onto a space or a line break: trim
+            // the ends so the highlight and the text sent to the AI carry no
+            // stray whitespace. If there was only whitespace, fall back to word snapping.
             val trimmedStart = rawStart + selected.indexOfFirst { !it.isWhitespace() }
             val trimmedEnd = rawStart + selected.indexOfLast { !it.isWhitespace() } + 1
             if (trimmedStart < trimmedEnd && (trimmedStart != rawStart || trimmedEnd != rawEnd)) {
@@ -259,12 +253,6 @@ class NativeReaderController(
             if (view != null) normalizeSelection(view)
             val start = view?.selectionStart ?: -1
             val end = view?.selectionEnd ?: -1
-            val selected = if (view != null && start >= 0 && end > start) {
-                view.text.subSequence(start, end).toString()
-            } else {
-                ""
-            }
-            Log.d("LectorReader", "ActionMode start sel=$start-$end text=$selected highlight=${view?.highlightColor}")
             return true
         }
 
@@ -273,33 +261,27 @@ class NativeReaderController(
             if (view != null) normalizeSelection(view)
             val start = view?.selectionStart ?: -1
             val end = view?.selectionEnd ?: -1
-            val selected = if (view != null && start >= 0 && end > start) {
-                view.text.subSequence(start, end).toString()
-            } else {
-                ""
-            }
-            Log.d("LectorReader", "ActionMode prepare sel=$start-$end text=$selected")
             menu.clear()
-            val highlightMenu = menu.addSubMenu(Menu.NONE, 0, 0, "Resaltar")
-            // En pantallas estrechas (~411dp) el disparador "Resaltar" caía al
-            // overflow (⋮): el popup anidado de colores se recortaba contra el
-            // borde y se perdía el último ítem ("Morado"). Como icono con
-            // SHOW_AS_ACTION_ALWAYS vive directamente en la barra de selección,
-            // donde el popup de los 5 colores ancla con espacio de sobra.
+            val highlightMenu = menu.addSubMenu(
+                Menu.NONE, 0, 0, context.getString(R.string.reader_action_highlight)
+            )
+            // Shown as an always-visible icon: on narrow screens (~411dp) the
+            // overflow menu clipped the nested color popup and hid its last
+            // item. In the selection bar the 5-color popup has room to anchor.
             highlightMenu.item?.apply {
                 setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
                 setIcon(android.R.drawable.ic_menu_more)
             }
-            highlightMenu.add(Menu.NONE, ACTION_YELLOW, 0, "Amarillo")
-            highlightMenu.add(Menu.NONE, ACTION_GREEN, 1, "Verde")
-            highlightMenu.add(Menu.NONE, ACTION_BLUE, 2, "Azul")
-            highlightMenu.add(Menu.NONE, ACTION_PINK, 3, "Rosa")
-            highlightMenu.add(Menu.NONE, ACTION_PURPLE, 4, "Morado")
-            menu.add(Menu.NONE, ACTION_DEFINE, 1, "Definir")
+            highlightMenu.add(Menu.NONE, ACTION_YELLOW, 0, context.getString(HighlightColor.YELLOW.labelRes))
+            highlightMenu.add(Menu.NONE, ACTION_GREEN, 1, context.getString(HighlightColor.GREEN.labelRes))
+            highlightMenu.add(Menu.NONE, ACTION_BLUE, 2, context.getString(HighlightColor.BLUE.labelRes))
+            highlightMenu.add(Menu.NONE, ACTION_PINK, 3, context.getString(HighlightColor.PINK.labelRes))
+            highlightMenu.add(Menu.NONE, ACTION_PURPLE, 4, context.getString(HighlightColor.PURPLE.labelRes))
+            menu.add(Menu.NONE, ACTION_DEFINE, 1, context.getString(R.string.reader_action_define))
                 .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
-            menu.add(Menu.NONE, ACTION_EXPLAIN, 2, "Explicar")
+            menu.add(Menu.NONE, ACTION_EXPLAIN, 2, context.getString(R.string.reader_action_explain))
                 .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
-            menu.add(Menu.NONE, ACTION_ASK, 3, "Preguntar")
+            menu.add(Menu.NONE, ACTION_ASK, 3, context.getString(R.string.reader_action_ask))
                 .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
             return true
         }
@@ -500,8 +482,8 @@ class NativeReaderController(
         )
         val view = textView ?: return
         val scroll = scrollView ?: return
-        // Se recuerda el primer carácter visible (no los píxeles): al cambiar
-        // el tamaño o la fuente el texto se recoloca y seguimos en la misma frase.
+        // Remember the first visible character (not pixels): when the size or
+        // font changes the text reflows and we stay on the same sentence.
         val anchorOffset = view.layout?.let { layout ->
             val local = (scroll.scrollY - view.totalPaddingTop).coerceAtLeast(0)
             layout.getLineStart(layout.getLineForVertical(local))
@@ -533,7 +515,7 @@ class NativeReaderController(
         scroll.pivotY = focusY
     }
 
-    /** Vista previa inmediata: se escala la vista (barato) y se muestra el tamaño. */
+    /** Instant preview: scales the view (cheap) and shows the size. */
     fun updatePinch(factor: Float) {
         val scroll = scrollView ?: return
         if (pinchBaseSize <= 0) return
@@ -566,9 +548,9 @@ class NativeReaderController(
         )
 
     /**
-     * True si el TextView tiene una selección de texto activa. El
-     * ReaderGestureLayout lo usa para no robar el gesto cuando el usuario
-     * está arrastrando los tiradores de la selección.
+     * True if the TextView has an active text selection. ReaderGestureLayout
+     * uses it to avoid stealing the gesture while the user drags the
+     * selection handles.
      */
     fun hasActiveSelection(): Boolean =
         (textView?.selectionStart ?: 0) != (textView?.selectionEnd ?: 0)
@@ -582,8 +564,8 @@ class NativeReaderController(
             listener?.onEndOfChapter()
             return
         }
-        // La línea cortada por el borde inferior pasa a ser la primera de la
-        // página siguiente: ninguna línea se ve partida ni se salta.
+        // The line cut by the bottom edge becomes the first line of the next
+        // page: no line is shown split or skipped.
         val raw = scroll.scrollY + viewport
         turnPage(
             direction = 1,
@@ -610,9 +592,9 @@ class NativeReaderController(
     }
 
     /**
-     * Ajusta [y] (coordenada de scroll) al inicio de una línea. Con
-     * [preferNext] se elige la siguiente línea si [y] cae a mitad de una,
-     * para que la página no empiece con una línea cortada.
+     * Snaps [y] (scroll coordinate) to the start of a line. With [preferNext]
+     * the next line is chosen when [y] falls mid-line, so the page never
+     * starts with a cut line.
      */
     private fun snapToLineTop(view: TextView, y: Int, preferNext: Boolean): Int {
         val layout = view.layout ?: return y
@@ -625,7 +607,7 @@ class NativeReaderController(
         } else {
             lineTop
         }
-        // Margen superior pequeño para que la línea no quede pegada al borde.
+        // Small top margin so the line does not touch the edge.
         return (snapped + top - dp(6)).coerceAtLeast(0)
     }
 
@@ -633,7 +615,7 @@ class NativeReaderController(
         val scroll = scrollView ?: return
         if (viewportHeight() <= 0) return
         scroll.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-        // Cancela cualquier turno anterior (incluido su withEndAction) y el fade de render().
+        // Cancel any previous page turn (including its withEndAction) and the render() fade.
         pageTurnToken++
         val token = pageTurnToken
         scroll.animate().cancel()
@@ -736,8 +718,8 @@ class NativeReaderController(
         view.overScrollMode = View.OVER_SCROLL_NEVER
         view.setHorizontallyScrolling(false)
         view.includeFontPadding = false
-        // SIMPLE + NONE: renderizado instantáneo en O(N) sin cálculo combinatorio de Knuth-Plass
-        // ni búsqueda en diccionario de separación silábica por cada palabra (igual que Moon+ Reader).
+        // SIMPLE + NONE: instant O(N) layout, without Knuth-Plass line breaking
+        // or a per-word hyphenation dictionary lookup.
         view.breakStrategy = Layout.BREAK_STRATEGY_SIMPLE
         view.hyphenationFrequency = Layout.HYPHENATION_FREQUENCY_NONE
         view.justificationMode = Layout.JUSTIFICATION_MODE_INTER_WORD
@@ -746,9 +728,9 @@ class NativeReaderController(
         scroll.isVerticalScrollBarEnabled = false
         scroll.overScrollMode = View.OVER_SCROLL_NEVER
         scroll.setOnScrollChangeListener { _, _, _, _, _ -> scheduleReport() }
-        // Los swipes horizontales los intercepta el ReaderGestureLayout raíz
-        // (ver NativeReaderView); aquí el TextView solo atiende taps sobre
-        // referencias, subrayados, imágenes y enlaces.
+        // Horizontal swipes are intercepted by the root ReaderGestureLayout
+        // (see NativeReaderView); here the TextView only handles taps on
+        // references, highlights, images and links.
         view.setOnTouchListener { touched, event ->
             highlightTapListener.onTouch(touched, event)
         }
@@ -756,8 +738,8 @@ class NativeReaderController(
     }
 
     private fun injectAnchorTargets(html: String): String {
-        // Desanidar cualquier target-anchor que haya quedado dentro de un <a> por parseos anteriores
-        // (en HTML un <a> dentro de otro <a> cierra prematuramente el externo, eliminando su URLSpan).
+        // Un-nest any target anchor left inside an <a> by earlier parsing (in
+        // HTML an <a> inside another <a> closes the outer one early, dropping its URLSpan).
         val unnested = html.replace(Regex("""(<a\s+[^>]*>)\s*(<a\s+href=["']termino://target-anchor/[^"']+["']>&#x200B;</a>)""")) { match ->
             match.groupValues[2] + match.groupValues[1]
         }
@@ -768,7 +750,7 @@ class NativeReaderController(
             val id = match.groupValues[3].trim()
             if (id.isNotBlank()) {
                 if (tagName.equals("a", ignoreCase = true)) {
-                    // Nunca anidar un <a> dentro de otro <a>: se inserta como hermano anterior
+                    // Never nest an <a> inside another <a>: insert it as the previous sibling
                     "<a href=\"termino://target-anchor/$id\">&#x200B;</a>$fullTag"
                 } else {
                     "$fullTag<a href=\"termino://target-anchor/$id\">&#x200B;</a>"
@@ -842,13 +824,12 @@ class NativeReaderController(
     }
 
     /**
-     * Decodifica la imagen referenciada por [source] y la escala al ancho de
-     * la columna del lector (el ancho medido del TextView; antes del primer
-     * layout se usa el 55% de la pantalla como fallback para que la imagen
-     * quepa incluso con el asistente de IA acoplado). Además registra en
-     * [loadedImageSources] la ruta del archivo que respalda cada src, para
-     * que un toque sobre el ImageSpan pueda abrir la imagen a tamaño
-     * completo sin reextraerla del drawable.
+     * Decodes the image referenced by [source] and scales it to the reader
+     * column width (the measured TextView width; before the first layout, 55%
+     * of the screen is used as a fallback so the image fits even with the AI
+     * assistant docked). It also records in [loadedImageSources] the file
+     * backing each src, so tapping the ImageSpan can open the full-size image
+     * without re-extracting it from the drawable.
      */
     private fun imageFor(source: String, imageSources: MutableMap<String, String>? = null): Drawable? {
         val clean = source.substringAfterLast("assets/").substringBefore('?').substringBefore('#')
@@ -876,13 +857,12 @@ class NativeReaderController(
         } else {
             loadedImageSources[source] = file.absolutePath
         }
-        // El ancho disponible es el de la columna del lector (el TextView ya
-        // medido), no el de la pantalla completa: con el asistente de IA
-        // acoplado el panel mide bastante menos que la pantalla (p. ej.
-        // ~1006px frente a 1600px) y usar widthPixels recortaba las imágenes
-        // fuera de la columna. Si el TextView aún no está medido (primer
-        // render, antes del primer layout), el 55% de la pantalla garantiza
-        // que la imagen quepa incluso con el panel acoplado.
+        // The available width is the reader column (the measured TextView),
+        // not the full screen: with the AI assistant docked the panel is much
+        // narrower than the screen, and using widthPixels cropped images
+        // outside the column. If the TextView is not measured yet (first
+        // render, before the first layout), 55% of the screen guarantees the
+        // image fits even with the panel docked.
         val available = textView?.width?.takeIf { it > 0 }
             ?: (context.resources.displayMetrics.widthPixels * 0.55f).toInt()
         val maxWidth = (available - dp(56)).coerceAtLeast(dp(120))
@@ -898,16 +878,16 @@ class NativeReaderController(
     }
 
     /**
-     * Resuelve un enlace interno (`#Aff8`, `#Sec5`, `#Fn1`, `#CR8`...).
+     * Resolves an internal link (`#Aff8`, `#Sec5`, `#Fn1`, `#CR8`...).
      *
-     * - Si el anchor corresponde a una referencia que se muestra en la hoja
-     *   (nota, cita, afiliación, contacto), abre la hoja. Esto evita que el
-     *   superíndice "(1)" de un autor caiga en la nota al pie "1".
-     * - Si es una sección/figura/tabla/bibliografía, hace scroll al texto
-     *   del encabezado usando el contenido semántico extraído del EPUB
-     *   (normalizando NBSP), no solo la etiqueta visible del enlace.
-     * - Si el anchor parece una referencia pero no se encontró, devuelve
-     *   false para que la UI muestre un aviso en vez de buscar un "1" suelto.
+     * - If the anchor is a reference shown in the sheet (note, citation,
+     *   affiliation, contact), opens the sheet. This keeps an author's "(1)"
+     *   superscript from landing on footnote "1".
+     * - If it is a section/figure/table/bibliography, scrolls to the heading
+     *   text using the semantic content extracted from the EPUB (normalizing
+     *   NBSP), not just the link's visible label.
+     * - If the anchor looks like a reference but was not found, returns false
+     *   so the UI shows a notice instead of searching for a bare "1".
      */
     fun goToInternalAnchor(fragment: String, label: String, allowSheet: Boolean = true): Boolean {
         val view = textView ?: return false
@@ -931,14 +911,13 @@ class NativeReaderController(
             }
         }
 
-        // Salto directo exacto por AnchorSpan en O(1)
+        // Exact direct jump through AnchorSpan in O(1)
         val exactOffset = anchorOffsets[cleanFragment]
         if (exactOffset != null) {
-            Log.d("LectorReader", "goToInternalAnchor: exact offset for '$cleanFragment' at $exactOffset")
             return scrollToOffset(exactOffset)
         }
 
-        // Fallback a búsqueda semántica de texto
+        // Fallback: semantic text search
         if (reference != null) {
             if (scrollToText(reference.content, reference.label)) return true
         }
@@ -955,10 +934,10 @@ class NativeReaderController(
     fun currentScrollY(): Int = scrollView?.scrollY ?: 0
 
     /**
-     * Busca el texto de una sección/figura/tabla en el capítulo renderizado.
-     * Primero prueba el contenido semántico completo ("6.2 Optimization
-     * Settings") y, si no aparece, el número de encabezado al inicio de una
-     * línea ("6.2"). El NBSP se normaliza a espacio sin alterar offsets.
+     * Finds the text of a section/figure/table in the rendered chapter. It
+     * first tries the full semantic content ("6.2 Optimization Settings") and,
+     * if missing, the heading number at the start of a line ("6.2"). NBSP is
+     * normalized to a space without changing offsets.
      */
     private fun scrollToText(primary: String, fallback: String): Boolean {
         val view = textView ?: return false
@@ -966,13 +945,13 @@ class NativeReaderController(
         val haystack = view.text.toString().replace(NBSP_REGEX, " ")
         val needles = buildList {
             add(primary)
-            // La leyenda de una tabla/figura puede incluir una cita al final
-            // que no coincide exactamente con el texto renderizado; probar su
-            // prefijo ("Table 3.1 ...") evita caer en la sección 3.1.
+            // A table/figure caption may end with a citation that does not
+            // match the rendered text exactly; trying its prefix
+            // ("Table 3.1 ...") avoids landing on section 3.1.
             val prefix = primary.take(60).trim()
             if (prefix.length >= 12 && prefix != primary) add(prefix)
-            // Etiqueta corta ("Table 3.1", "Figure 6.1"): sobrevive a los
-            // saltos de línea que Html.fromHtml inserta en leyendas largas.
+            // Short label ("Table 3.1", "Figure 6.1"): survives the line
+            // breaks Html.fromHtml inserts into long captions.
             val captionLabel = Regex(
                 "(?i)\\b(Table|Figure|Tabla|Figura)\\s+\\d+(?:\\.\\d+)*"
             ).find(primary)?.value
@@ -1008,10 +987,10 @@ class NativeReaderController(
         val line = layout.getLineForOffset(safeOffset)
         val y = layout.getLineTop(line) + view.totalPaddingTop
         val target = (y - viewportHeight() / 4).coerceAtLeast(0)
-        // Salto directo: smoothScrollTo sobre un contenido de decenas de miles
-        // de píxeles no completaba el recorrido en este NestedScrollView y el
-        // lector se quedaba en la página de origen. scrollTo es el mismo
-        // mecanismo que usa la paginación y actualiza el informe de página.
+        // Direct jump: smoothScrollTo over content tens of thousands of pixels
+        // tall did not finish in this NestedScrollView and the reader stayed on
+        // the original page. scrollTo is the same mechanism pagination uses and
+        // it updates the page report.
         scroll.scrollTo(0, target)
         scheduleReport()
         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -1042,8 +1021,8 @@ class NativeReaderController(
                     color = accentColor,
                     listener = listener
                 )
-                // match.range cubre el corchete completo, incluidos los espacios internos
-                // ("[ 5 ]"), para que el toque en cualquier punto del corchete abra la referencia.
+                // match.range covers the whole bracket, inner spaces included
+                // ("[ 5 ]"), so tapping anywhere on the bracket opens the reference.
                 spannable.setSpan(
                     span,
                     match.range.first,
@@ -1097,10 +1076,10 @@ class NativeReaderController(
     private var touchDownTime = 0L
 
     /**
-     * Solo atiende taps (referencias, subrayados, imágenes y enlaces). Los
-     * swipes horizontales los intercepta el ReaderGestureLayout raíz antes de
-     * que lleguen al TextView, así que un gesto horizontal nunca se procesa
-     * aquí ni como tap ni como arrastre (no hay doble giro de página).
+     * Handles taps only (references, highlights, images and links).
+     * Horizontal swipes are intercepted by the root ReaderGestureLayout before
+     * they reach the TextView, so a horizontal gesture is never processed here
+     * as a tap or a drag (no double page turn).
      */
     private val highlightTapListener = View.OnTouchListener { touched, event ->
         val view = touched as? TextView ?: return@OnTouchListener false
@@ -1123,7 +1102,6 @@ class NativeReaderController(
                     val offset = view.getOffsetForPosition(event.x, event.y)
                         .coerceIn(0, (view.text.length - 1).coerceAtLeast(0))
                     val reference = referenceSpanAtPosition(view, spannable, event.x, event.y, offset)
-                    Log.d("LectorReader", "tap offset=$offset refs=${spannable.getSpans(offset, offset, ReferenceSpan::class.java).size} refNearby=${reference != null} urls=${spannable.getSpans(offset, offset, URLSpan::class.java).size} url=${spannable.getSpans(offset, offset, URLSpan::class.java).firstOrNull()?.url} sel=${view.selectionStart}-${view.selectionEnd}")
                     if (reference != null) {
                         clearSelection()
                         listener?.onReferenceTapped(reference.references)
@@ -1146,12 +1124,11 @@ class NativeReaderController(
                         listener?.onHighlightTapped(highlight.id, text)
                         return@OnTouchListener true
                     }
-                    // Imágenes: se comprueban antes que los enlaces para que
-                    // tocar una figura la abra a tamaño completo. Si el span no
-                    // tiene archivo rastreado (Html.fromHtml solo crea el
-                    // ImageSpan cuando imageFor() decodificó algo, así que el
-                    // mapa siempre debería tener la ruta), el toque cae al
-                    // manejo de enlaces por si la imagen va envuelta en un <a>.
+                    // Images are checked before links so tapping a figure opens
+                    // it full size. If the span has no tracked file (Html.fromHtml
+                    // only creates the ImageSpan when imageFor() decoded something,
+                    // so the map should always have the path), the tap falls
+                    // through to link handling in case the image is wrapped in an <a>.
                     val imageSpan = imageSpanAtPosition(view, spannable, event.x, event.y, offset)
                     val imagePath = imageSpan?.source?.let(loadedImageSources::get)
                     if (imagePath != null) {
@@ -1176,9 +1153,9 @@ class NativeReaderController(
                                 parts.size >= 2 && parts[0] == "chapter" -> {
                                     val targetChapter = parts[1].toIntOrNull()
                                     if (targetChapter == null) {
-                                        // Índice no numérico: el toque no se
-                                        // consume en silencio, cae al fallback
-                                        // de enlace no resuelto.
+                                        // Non-numeric index: the tap is not
+                                        // silently consumed, it falls through
+                                        // to the unresolved-link fallback.
                                         listener?.onLinkTapped(url)
                                     } else {
                                         clearSelection()
@@ -1196,8 +1173,8 @@ class NativeReaderController(
                                         listener?.onLinkTapped(url)
                                     } else {
                                         clearSelection()
-                                        // Si la referencia pertenece al capítulo actual y es de tipo hoja (nota/afiliación/contacto),
-                                        // la abrimos directamente en la hoja flotante sin salto de página.
+                                        // If the reference belongs to the current chapter and is a sheet type
+                                        // (note/affiliation/contact), open it in the floating sheet without jumping.
                                         val localRef = if (targetChapter == content?.chapterIndex && targetAnchor != null) {
                                             referencesByAnchor[targetAnchor.lowercase()]
                                         } else null
@@ -1250,9 +1227,9 @@ class NativeReaderController(
     }
 
     /**
-     * Toque sobre texto sin enlace: con selección activa solo la limpia; si no,
-     * el 28 % izquierdo/derecho pasa página (como Moon+ Reader o Play Libros)
-     * y el centro muestra u oculta la interfaz.
+     * Tap on text without a link: with an active selection it only clears it;
+     * otherwise the left/right 28% turns the page and the center shows or
+     * hides the UI.
      */
     private fun handlePlainTap(view: TextView, event: MotionEvent): Boolean {
         val x = event.x
@@ -1260,8 +1237,8 @@ class NativeReaderController(
             clearSelection()
             return true
         }
-        // Al consumir el UP, el TextView seleccionable se queda con el gesto
-        // a medias (cursor y mini-selección fantasma). Un CANCEL lo reinicia.
+        // After consuming UP, the selectable TextView keeps a half-finished
+        // gesture (cursor and ghost mini-selection). A CANCEL resets it.
         val cancel = MotionEvent.obtain(event).apply { action = MotionEvent.ACTION_CANCEL }
         view.onTouchEvent(cancel)
         cancel.recycle()
@@ -1284,8 +1261,8 @@ class NativeReaderController(
     }
 
     /**
-     * Localiza [needle] en el capítulo (ignorando mayúsculas y diferencias de
-     * espacios), lleva la vista hasta él y lo resalta un instante.
+     * Finds [needle] in the chapter (ignoring case and whitespace
+     * differences), scrolls to it and briefly highlights it.
      */
     fun findAndReveal(needle: String): Boolean {
         val view = textView ?: return false
@@ -1311,17 +1288,16 @@ class NativeReaderController(
     }
 
     /**
-     * Busca una referencia en [offset] y, si no hay, en los caracteres contiguos.
-     * Así tocar el corchete o el espacio interior de "[ 5 ]" sigue abriendo la referencia.
+     * Looks for a reference at [offset] and, if there is none, at the adjacent
+     * characters, so tapping the bracket or the inner space of "[ 5 ]" still opens it.
      */
     private fun referenceSpanAt(spannable: Spanned, offset: Int): ReferenceSpan? {
         val direct = spannable.getSpans(offset, offset, ReferenceSpan::class.java).firstOrNull()
         if (direct != null) return direct
-        // Radio ampliado a 8 caracteres: getOffsetForPosition puede desviarse
-        // varios caracteres (texto justificado, spans cortos como "[5]"), y
-        // getSpans usa desigualdad estricta (spanEnd > queryStart), por lo que
-        // un delta demasiado pequeño deja fuera toques que caen justo después
-        // del corchete.
+        // Radius widened to 8 characters: getOffsetForPosition can drift
+        // several characters (justified text, short spans such as "[5]"), and
+        // getSpans uses a strict inequality (spanEnd > queryStart), so a delta
+        // that is too small misses taps that land just after the bracket.
         for (delta in 1..8) {
             val before = (offset - delta).coerceAtLeast(0)
             val after = (offset + delta).coerceAtMost(spannable.length)
@@ -1334,15 +1310,15 @@ class NativeReaderController(
     }
 
     /**
-     * Hit-test de referencias basado en los límites visuales del span, no solo
-     * en el offset de carácter. Algunos lectores (texto justificado, `[5]` al
-     * final de una línea, dedos sobre targets pequeños) pueden desplazar el
-     * offset devuelto por [TextView.getOffsetForPosition] varios caracteres
-     * respecto a donde el usuario ve la cita. Esta función recorre los
-     * ReferenceSpan de la línea tocada y comprueba si el toque cae dentro del
-     * rectángulo del span (con margen). Si ninguno de los dos métodos
-     * anteriores encuentra el span, devuelve el ReferenceSpan más cercano al
-     * offset tocado siempre que esté a 8 caracteres o menos.
+     * Reference hit-test based on the span's visual bounds, not only the
+     * character offset. Justified text, a `[5]` at the end of a line or a
+     * finger on a small target can shift the offset returned by
+     * [TextView.getOffsetForPosition] several characters away from where the
+     * user sees the citation. This walks the ReferenceSpans of the tapped line
+     * and checks whether the tap falls inside the span rectangle (with a
+     * margin). If neither previous method finds the span, it returns the
+     * ReferenceSpan closest to the tapped offset as long as it is within 8
+     * characters.
      */
     private fun referenceSpanAtPosition(
         view: TextView,
@@ -1369,17 +1345,17 @@ class NativeReaderController(
             if (line < startLine || line > endLine) continue
             val left = layout.getPrimaryHorizontal(start)
             val right = when {
-                // Span de una sola línea: del inicio del span al final de su
-                // último carácter.
+                // Single-line span: from the span start to the end of its
+                // last character.
                 endLine == startLine -> layout.getPrimaryHorizontal(end)
-                // Última línea de un span multilínea: el span termina donde
-                // acaba su texto, no al final de la línea; getLineRight
-                // sobre-extendería el hit-test al resto de la línea.
+                // Last line of a multi-line span: the span ends where its text
+                // ends, not at the end of the line; getLineRight would
+                // over-extend the hit-test to the rest of the line.
                 line == endLine && end < spannable.length ->
                     layout.getPrimaryHorizontal(end)
-                // Primeras e intermedias líneas (el span continúa): ocupan la
-                // línea completa. También cubre end == spannable.length, donde
-                // getPrimaryHorizontal(end) se saldría del texto.
+                // First and middle lines (the span continues): they take the
+                // full line. Also covers end == spannable.length, where
+                // getPrimaryHorizontal(end) would fall outside the text.
                 else -> layout.getLineRight(line).toFloat()
             }
             if (line == startLine && localX < left - padding) continue
@@ -1391,12 +1367,12 @@ class NativeReaderController(
             }
         }
 
-        // 3. Fallback: span más cercano dentro de 8 caracteres. Aunque el
-        // offset devuelto por getOffsetForPosition se desvíe varios caracteres
-        // del corchete real (y por tanto del rectángulo calculado arriba),
-        // la referencia más próxima al toque sigue siendo la pretendida. El
-        // límite de 8 caracteres evita activar referencias de otra parte del
-        // texto o robar taps de enlaces adyacentes.
+        // 3. Fallback: closest span within 8 characters. Even if the offset
+        // returned by getOffsetForPosition drifts several characters from the
+        // actual bracket (and therefore from the rectangle computed above),
+        // the reference closest to the tap is still the intended one. The
+        // 8-character limit avoids triggering references elsewhere in the
+        // text or stealing taps from adjacent links.
         val allSpans = spannable.getSpans(0, spannable.length, ReferenceSpan::class.java)
         var best: ReferenceSpan? = null
         var bestDistance = Int.MAX_VALUE
@@ -1419,9 +1395,9 @@ class NativeReaderController(
     }
 
     /**
-     * Busca un URLSpan en [offset] y, si no hay, en los caracteres contiguos.
-     * Esencial para superíndices de un solo carácter (p. ej. notas al pie "1"),
-     * donde el toque con el dedo casi siempre aterriza en el carácter adyacente.
+     * Looks for a URLSpan at [offset] and, if there is none, at the adjacent
+     * characters. Essential for single-character superscripts (e.g. footnote
+     * "1"), where a finger tap almost always lands on the adjacent character.
      */
     private fun urlSpanAt(spannable: Spanned, offset: Int): URLSpan? {
         val direct = spannable.getSpans(offset, offset, URLSpan::class.java).firstOrNull()
@@ -1438,9 +1414,9 @@ class NativeReaderController(
     }
 
     /**
-     * Hit-test de URLSpan basado en límites visuales con tolerancia táctil generosa (24dp),
-     * emulando el comportamiento maduro de Moon+ Reader para que tocar enlaces diminutos
-     * como llamadas a nota ("1", "¹") o citas nunca falle con el dedo.
+     * URLSpan hit-test based on visual bounds with a generous touch tolerance
+     * (24dp), so tapping tiny links such as note calls ("1", "¹") or
+     * citations does not miss.
      */
     private fun urlSpanAtPosition(
         view: TextView,
@@ -1500,12 +1476,12 @@ class NativeReaderController(
     }
 
     /**
-     * Hit-test de imágenes: busca un ImageSpan en el offset tocado y, si no
-     * aparece, comprueba si el toque cae dentro del rectángulo dibujado de
-     * alguna imagen del texto. El carácter de una imagen ocupa una sola
-     * posición y getSpans con un punto (inicio == fin) no alcanza spans de un
-     * solo carácter por la desigualdad estricta, por eso se consulta un rango
-     * de ±1 y se respalda con el rectángulo del drawable en su línea.
+     * Image hit-test: looks for an ImageSpan at the tapped offset and, if none
+     * appears, checks whether the tap falls inside the drawn rectangle of an
+     * image in the text. An image character takes a single position and
+     * getSpans with a point (start == end) misses one-character spans because
+     * of the strict inequality, so a ±1 range is queried, backed by the
+     * drawable's rectangle on its line.
      */
     private fun imageSpanAtPosition(
         view: TextView,
@@ -1532,12 +1508,12 @@ class NativeReaderController(
             if (line < 0 || line >= layout.lineCount) continue
             val left = layout.getPrimaryHorizontal(start)
             val right = if (end < spannable.length) {
-                // Borde derecho del carácter de la imagen: el drawable ocupa
-                // exactamente ese ancho en la línea.
+                // Right edge of the image character: the drawable takes exactly
+                // that width on the line.
                 layout.getPrimaryHorizontal(end)
             } else {
-                // La imagen es el último carácter: la posición tras el span no
-                // existe, así que medimos desde el borde del drawable.
+                // The image is the last character: the position after the span
+                // does not exist, so measure from the drawable's edge.
                 left + span.drawable.bounds.width().toFloat()
             }
             val top = layout.getLineTop(line).toFloat()
@@ -1559,40 +1535,17 @@ class NativeReaderController(
         val viewport = viewportHeight()
         if (viewport <= 0 || view.height <= 0) return
         val total = totalPages()
-        // Redondeo: los saltos se ajustan a líneas y avanzan algo menos de un viewport.
+        // Rounding: jumps snap to lines and advance slightly less than a viewport.
         val page = ((scroll.scrollY + viewport / 2) / viewport).coerceIn(0, total - 1)
         val visible = visibleText()
         if (ready) {
             lastPage = page
             lastTotal = total
             listener?.onReady(total, page, visible)
-            logReferencePositions()
         } else if (force || page != lastPage || total != lastTotal) {
             lastPage = page
             lastTotal = total
             listener?.onPageChanged(page, total, visible)
-            logReferencePositions()
-        }
-    }
-
-    private fun logReferencePositions() {
-        val view = textView ?: return
-        val layout = view.layout ?: return
-        val text = view.text as? Spanned ?: return
-        val location = IntArray(2)
-        view.getLocationOnScreen(location)
-        val spans = text.getSpans(0, text.length, ReferenceSpan::class.java)
-        spans.take(12).forEach { span ->
-            val start = text.getSpanStart(span)
-            if (start < 0) return@forEach
-            val line = layout.getLineForOffset(start)
-            val x = location[0] + view.totalPaddingLeft +
-                layout.getPrimaryHorizontal(start).toInt()
-            val y = location[1] + view.totalPaddingTop + layout.getLineTop(line)
-            Log.d(
-                "LectorReader",
-                "refpos ${span.references.map { it.referenceKey }} x=$x y=$y start=$start"
-            )
         }
     }
 

@@ -1,9 +1,10 @@
 package com.termino.core.reader
 
 /**
- * Puente entre la Activity (que recibe las teclas físicas) y el lector
- * visible. El lector registra [pageTurner] mientras está en pantalla y la
- * opción "pasar página con volumen" está activa; devuelve true si consumió.
+ * Bridge between the Activity (which receives hardware keys) and the visible
+ * reader. The reader registers [pageTurner] while it is on screen and the
+ * "turn pages with volume keys" option is on; it returns true if it consumed
+ * the key.
  */
 object ReaderKeys {
     @Volatile

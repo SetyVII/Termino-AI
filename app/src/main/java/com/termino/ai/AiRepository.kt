@@ -1,5 +1,7 @@
 package com.termino.ai
 
+import android.content.Context
+import com.termino.R
 import com.termino.core.ai.AiException
 import com.termino.core.ai.AiMessage
 import com.termino.core.ai.AiRequest
@@ -13,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
 class AiRepository(
+    private val context: Context,
     private val client: AiStreamingClient
 ) {
     private companion object {
@@ -20,23 +23,15 @@ class AiRepository(
     }
 
     /**
-     * "reasoning_effort" se envía siempre que el ajuste no esté apagado: si
-     * el modelo no lo admite, el proveedor responde 400, AiStreamingClient
-     * reintenta sin él y recuerda la respuesta para ese modelo. Así no hace
-     * falta mantener una lista de nombres de modelos de razonamiento.
-     */
-    @Suppress("UNUSED_PARAMETER")
-    private fun apiReasoningEffort(model: String, effort: ReasoningEffort): ReasoningEffort = effort
-
-    /**
-     * La directiva textual de razonamiento interno se aplica SIEMPRE que el
-     * ajuste esté en MEDIUM o HIGH, con o sin el parámetro de API: para los
-     * modelos que no exponen "reasoning_effort" es la única vía de pedir ese
-     * esfuerzo, y para los que sí lo exponen resulta idempotente.
-     * withHighEffortReasoning solo la añade con HIGH, así que se fuerza ese
-     * valor; su marca interna evita duplicados si el prompt ya la contenía
-     * (p. ej. cuando ReadingContextBuilder o los prompts de AiPrompts la
-     * incluyeron antes).
+     * The textual internal-reasoning directive is added whenever the setting
+     * is MEDIUM or HIGH, alongside the API parameter: for models that do not
+     * expose "reasoning_effort" it is the only way to request that effort.
+     * withHighEffortReasoning only adds it for HIGH, so that value is forced
+     * here; its marker prevents duplicates if the prompt already contained it.
+     *
+     * "reasoning_effort" itself is always sent unless the setting is OFF: if
+     * the model does not accept it, the provider answers 400 and
+     * AiStreamingClient retries without it, remembering that for the model.
      */
     private fun withReasoningDirective(systemPrompt: String, effort: ReasoningEffort): String =
         when (effort) {
@@ -69,10 +64,7 @@ class AiRepository(
                 messages = messages,
                 temperature = settings.temperature,
                 maxTokens = settings.maxTokens,
-                reasoningEffort = apiReasoningEffort(
-                    settings.chatModel,
-                    settings.reasoningEffort
-                )
+                reasoningEffort = settings.reasoningEffort
             )
         )
     }
@@ -105,7 +97,7 @@ class AiRepository(
             ),
             temperature = 0.2f,
             maxTokens = 700,
-            reasoningEffort = apiReasoningEffort(settings.fastModel, settings.reasoningEffort)
+            reasoningEffort = settings.reasoningEffort
         )
     )
 
@@ -137,21 +129,21 @@ class AiRepository(
             ),
             temperature = 0.3f,
             maxTokens = 1200,
-            reasoningEffort = apiReasoningEffort(settings.chatModel, settings.reasoningEffort)
+            reasoningEffort = settings.reasoningEffort
         )
     )
 
     /**
-     * Prueba real de la configuración actual (incluidos los cambios sin
-     * guardar de Ajustes → Avanzado): una petición mínima al modelo de chat
-     * y otra al rápido si es distinto.
+     * Real test of the current configuration (including unsaved changes from
+     * Settings → Advanced): a minimal request to the chat model, and another
+     * to the fast model if it differs.
      */
     suspend fun testConnection(settings: AppSettings): Result<String> = withContext(Dispatchers.IO) {
         if (settings.baseUrl.isBlank()) {
-            return@withContext Result.failure(AiException("Escribe una URL base"))
+            return@withContext Result.failure(AiException(context.getString(R.string.ai_test_missing_url)))
         }
         if (settings.chatModel.isBlank()) {
-            return@withContext Result.failure(AiException("Elige un modelo de chat"))
+            return@withContext Result.failure(AiException(context.getString(R.string.ai_test_missing_model)))
         }
         val models = listOf(settings.chatModel, settings.fastModel)
             .map { it.trim() }.filter { it.isNotBlank() }.distinct()
@@ -159,9 +151,9 @@ class AiRepository(
             val ping = client.ping(settings.baseUrl, settings.apiKey, model)
             if (!ping.ok) {
                 val reason = when (ping.httpCode) {
-                    401, 403 -> "El proveedor rechazó la API Key"
-                    404 -> "El proveedor no reconoce el modelo «$model»"
-                    null -> "No se pudo conectar con el proveedor"
+                    401, 403 -> context.getString(R.string.ai_test_key_rejected)
+                    404 -> context.getString(R.string.ai_test_unknown_model, model)
+                    null -> context.getString(R.string.ai_test_unreachable)
                     else -> "HTTP ${ping.httpCode}"
                 }
                 return@withContext Result.failure(
@@ -169,14 +161,14 @@ class AiRepository(
                 )
             }
         }
-        Result.success("Conexión correcta · " + models.joinToString(" · "))
+        Result.success(context.getString(R.string.ai_test_ok, models.joinToString(" · ")))
     }
 
     /**
-     * Convierte una pregunta de seguimiento ("¿y eso por qué?") en una consulta
-     * de búsqueda autónoma usando la conversación, con el modelo rápido. Solo
-     * sirve para recuperar mejores fragmentos: el chat sigue recibiendo la
-     * pregunta original. Ante cualquier fallo o demora devuelve null.
+     * Turns a follow-up question ("and why is that?") into a self-contained
+     * search query using the conversation and the fast model. It only serves
+     * to retrieve better passages: the chat still receives the original
+     * question. Returns null on any failure or timeout.
      */
     suspend fun rewriteQuery(
         settings: AppSettings,
@@ -188,7 +180,7 @@ class AiRepository(
         val model = settings.fastModel.ifBlank { settings.chatModel }
         if (model.isBlank()) return null
         val transcript = recent.joinToString("\n") { message ->
-            val who = if (message.role == "user") "Usuario" else "Asistente"
+            val who = if (message.role == "user") "User" else "Assistant"
             "$who: ${message.content.take(600)}"
         }
         val answer = kotlinx.coroutines.withTimeoutOrNull(REWRITE_TIMEOUT_MS) {
@@ -205,7 +197,7 @@ class AiRepository(
                                     "for a book index. Resolve pronouns and references using the conversation. " +
                                     "Keep the original language. Output only the query, without quotes."
                             ),
-                            AiMessage("user", "Conversación:\n$transcript\n\nÚltima pregunta: $question")
+                            AiMessage("user", "Conversation:\n$transcript\n\nLast question: $question")
                         ),
                         temperature = 0f,
                         maxTokens = 60,
@@ -223,11 +215,10 @@ class AiRepository(
         client.fetchModels(settings.baseUrl, settings.apiKey)
 
     /**
-     * Modelos que expone el proveedor vía GET {base}/models. Sin caché: se
-     * consulta cada vez que se abren Ajustes o se pulsa el botón de recarga,
-     * de modo que los modelos nuevos del proveedor aparezcan sin actualizar
-     * la app. Ante cualquier fallo (URL vacía, red, auth) devuelve una lista
-     * vacía, nunca lanza.
+     * Models the provider exposes via GET {base}/models. Not cached: it is
+     * queried every time Settings opens or the reload button is pressed, so
+     * new provider models show up without updating the app. Returns an empty
+     * list on any failure (empty URL, network, auth); never throws.
      */
     suspend fun listModels(settings: AppSettings): List<String> {
         if (settings.baseUrl.isBlank()) return emptyList()

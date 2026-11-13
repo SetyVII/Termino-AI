@@ -1,6 +1,9 @@
 package com.termino.ui.components
 
+import com.termino.R
 import com.termino.core.reader.ReaderColors
+import com.termino.core.reader.displayName
+import androidx.compose.ui.res.stringResource
 import com.termino.core.reader.ReaderFont
 import com.termino.core.reader.ReaderTheme
 import com.termino.core.reader.readerColors
@@ -82,7 +85,7 @@ import com.termino.ui.reader.SearchUi
 import java.text.DateFormat
 import java.util.Date
 
-/** Búsqueda de texto completo dentro del libro con fragmentos resaltados. */
+/** Full-text search inside the book with highlighted snippets. */
 @Composable
 fun ReaderSearchSheet(
     search: SearchUi,
@@ -112,12 +115,12 @@ fun ReaderSearchSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focus),
-                placeholder = { Text("Buscar en el libro", color = colors.muted) },
+                placeholder = { Text(stringResource(R.string.search_in_book), color = colors.muted) },
                 leadingIcon = { Icon(Icons.Outlined.Search, null, tint = colors.muted) },
                 trailingIcon = {
                     if (search.query.isNotEmpty()) {
                         IconButton(onClick = { onQueryChange("") }) {
-                            Icon(Icons.Outlined.Close, "Limpiar", tint = colors.muted)
+                            Icon(Icons.Outlined.Close, stringResource(R.string.assistant_clear), tint = colors.muted)
                         }
                     }
                 },
@@ -154,20 +157,20 @@ fun ReaderSearchSheet(
             ) { mode ->
                 when (mode) {
                     0 -> Text(
-                        "Escribe al menos dos letras. Se busca en todo el texto del libro.",
+                        stringResource(R.string.search_hint),
                         modifier = Modifier.padding(vertical = 24.dp),
                         fontSize = 12.5.sp,
                         color = colors.muted
                     )
                     1 -> Text(
-                        "Sin resultados para «${search.query.trim()}».",
+                        stringResource(R.string.search_no_results, search.query.trim()),
                         modifier = Modifier.padding(vertical = 24.dp),
                         fontSize = 12.5.sp,
                         color = colors.muted
                     )
                     else -> Column {
                         Text(
-                            text = if (search.truncated) "Más de ${search.hits.size} resultados" else "${search.hits.size} resultados",
+                            text = if (search.truncated) stringResource(R.string.search_results_more, search.hits.size) else stringResource(R.string.search_results, search.hits.size),
                             fontSize = 11.sp,
                             color = colors.muted
                         )
@@ -229,7 +232,7 @@ private fun SearchHitRow(hit: SearchHit, colors: ReaderColors, onClick: () -> Un
     )
 }
 
-/** Lista de marcadores para la hoja de navegación. */
+/** Bookmark list for the navigation sheet. */
 @Composable
 fun BookmarkList(
     bookmarks: List<BookmarkEntity>,
@@ -246,7 +249,7 @@ fun BookmarkList(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                "Pulsa el marcador de la barra superior para guardar la página actual.",
+                stringResource(R.string.bookmarks_empty),
                 fontSize = 12.5.sp,
                 color = colors.muted
             )
@@ -277,8 +280,7 @@ fun BookmarkList(
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = (chapter?.title ?: "Capítulo ${bookmark.chapterIndex + 1}") +
-                            " · pág. ${bookmark.pageIndex + 1}",
+                        text = stringResource(R.string.bookmark_location, chapter?.title ?: stringResource(R.string.chapter_fallback, bookmark.chapterIndex + 1), bookmark.pageIndex + 1),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = colors.foreground,
@@ -299,7 +301,7 @@ fun BookmarkList(
                     )
                 }
                 IconButton(onClick = { onDelete(bookmark) }) {
-                    Icon(Icons.Outlined.Delete, "Borrar marcador", tint = colors.muted, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Outlined.Delete, stringResource(R.string.bookmark_delete), tint = colors.muted, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -307,8 +309,8 @@ fun BookmarkList(
 }
 
 /**
- * Aspecto del lector en una hoja inferior (móvil): tema, cuidado de la vista
- * y tipografía. En tablet se usan los menús desplegables de la barra.
+ * Reader appearance in a bottom sheet (phone): theme, eye care and
+ * typography. Tablets use the top bar dropdown menus instead.
  */
 @Composable
 fun ReaderAppearanceSheet(
@@ -336,7 +338,7 @@ fun ReaderAppearanceSheet(
                 .padding(bottom = 20.dp)
                 .navigationBarsPadding()
         ) {
-            Text("Tema", fontSize = 12.sp, color = colors.muted)
+            Text(stringResource(R.string.theme), fontSize = 12.sp, color = colors.muted)
             Spacer(Modifier.height(8.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -380,13 +382,13 @@ fun ReaderAppearanceSheet(
                             else if (theme != ReaderTheme.AUTO) Text("Aa", color = preview.foreground, fontSize = 13.sp)
                         }
                         Spacer(Modifier.height(4.dp))
-                        Text(theme.label, fontSize = 11.sp, color = if (selected) colors.accent else colors.muted)
+                        Text(stringResource(theme.labelRes), fontSize = 11.sp, color = if (selected) colors.accent else colors.muted)
                     }
                 }
             }
             Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Cuidado de la vista", modifier = Modifier.weight(1f), fontSize = 13.sp, color = colors.foreground)
+                Text(stringResource(R.string.eye_care), modifier = Modifier.weight(1f), fontSize = 13.sp, color = colors.foreground)
                 Switch(
                     checked = state.eyeCare,
                     onCheckedChange = onEyeCare,
@@ -395,16 +397,16 @@ fun ReaderAppearanceSheet(
             }
             HorizontalDivider(Modifier.padding(vertical = 10.dp), color = colors.foreground.copy(alpha = 0.08f))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Tamaño de letra", modifier = Modifier.weight(1f), fontSize = 13.sp, color = colors.foreground)
+                Text(stringResource(R.string.font_size_long), modifier = Modifier.weight(1f), fontSize = 13.sp, color = colors.foreground)
                 IconButton(onClick = { onFontSize(state.fontSize - 1) }, enabled = state.fontSize > com.termino.core.reader.MIN_FONT_SIZE) {
-                    Icon(Icons.Outlined.Remove, "Reducir", tint = colors.foreground)
+                    Icon(Icons.Outlined.Remove, stringResource(R.string.font_decrease), tint = colors.foreground)
                 }
                 Text("${state.fontSize}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = colors.foreground)
                 IconButton(onClick = { onFontSize(state.fontSize + 1) }, enabled = state.fontSize < com.termino.core.reader.MAX_FONT_SIZE) {
-                    Icon(Icons.Outlined.Add, "Aumentar", tint = colors.foreground)
+                    Icon(Icons.Outlined.Add, stringResource(R.string.font_increase), tint = colors.foreground)
                 }
             }
-            Text("Interlineado", fontSize = 12.sp, color = colors.muted)
+            Text(stringResource(R.string.line_height), fontSize = 12.sp, color = colors.muted)
             Slider(
                 value = state.lineHeight,
                 onValueChange = onLineHeight,
@@ -416,7 +418,7 @@ fun ReaderAppearanceSheet(
                 )
             )
             Spacer(Modifier.height(4.dp))
-            Text("Fuente", fontSize = 12.sp, color = colors.muted)
+            Text(stringResource(R.string.font), fontSize = 12.sp, color = colors.muted)
             FontPickerRow(
                 fonts = state.fonts,
                 selected = state.font,
@@ -430,7 +432,7 @@ fun ReaderAppearanceSheet(
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "Consejo: pellizca el texto con dos dedos para cambiar el tamaño.",
+                stringResource(R.string.pinch_tip),
                 fontSize = 11.sp,
                 color = colors.muted
             )
@@ -439,9 +441,8 @@ fun ReaderAppearanceSheet(
 }
 
 /**
- * Selector de fuente: cada tarjeta muestra "Aa" con la propia fuente. La
- * última tarjeta importa una TTF/OTF; mantener pulsada una fuente importada
- * permite quitarla.
+ * Font picker: each card shows "Aa" in its own font. The last card imports
+ * a TTF/OTF; long-pressing an imported font lets the user remove it.
  */
 @Composable
 fun FontPickerRow(
@@ -499,7 +500,7 @@ fun FontPickerRow(
                     Text("Aa", fontFamily = family, fontSize = 22.sp, color = if (isSelected) accent else foreground)
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        font.label,
+                        font.displayName(),
                         fontSize = 10.5.sp,
                         color = if (isSelected) accent else muted,
                         maxLines = 1,
@@ -508,7 +509,7 @@ fun FontPickerRow(
                 }
                 androidx.compose.material3.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     androidx.compose.material3.DropdownMenuItem(
-                        text = { Text("Quitar fuente") },
+                        text = { Text(stringResource(R.string.font_remove)) },
                         leadingIcon = { Icon(Icons.Outlined.Delete, null) },
                         onClick = {
                             menu = false
@@ -538,13 +539,13 @@ fun FontPickerRow(
             ) {
                 Icon(Icons.Outlined.Add, null, tint = accent, modifier = Modifier.size(26.dp))
                 Spacer(Modifier.height(2.dp))
-                Text("Importar", fontSize = 10.5.sp, color = muted, maxLines = 1)
+                Text(stringResource(R.string.font_import), fontSize = 10.5.sp, color = muted, maxLines = 1)
             }
         }
     }
 }
 
-/** Círculo de vista previa de un tema; AUTO se dibuja mitad claro, mitad oscuro. */
+/** Theme preview circle; AUTO is drawn half light, half dark. */
 @Composable
 fun ThemeSwatch(
     theme: ReaderTheme,

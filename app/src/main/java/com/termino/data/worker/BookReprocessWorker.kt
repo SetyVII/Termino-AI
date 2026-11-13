@@ -4,16 +4,17 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.termino.R
 import com.termino.TerminoApp
 import com.termino.data.repo.ImportStatusStore
 import kotlinx.coroutines.CancellationException
 
 /**
- * Reanaliza un libro ya importado: rehace capítulos, referencias, imágenes,
- * portada e índice RAG conservando subrayados y chat (mismo bookId).
+ * Re-analyzes an already imported book: rebuilds chapters, references,
+ * images, cover and RAG index while keeping highlights and chat (same bookId).
  *
- * Entrada: [KEY_JOB_ID] (id del job en [ImportStatusStore]) y
- * [KEY_BOOK_ID] (identificador del libro a reanalizar).
+ * Input: [KEY_JOB_ID] (job id in [ImportStatusStore]) and [KEY_BOOK_ID]
+ * (the book to re-analyze).
  */
 class BookReprocessWorker(
     appContext: Context,
@@ -30,8 +31,8 @@ class BookReprocessWorker(
     override suspend fun doWork(): Result {
         val jobId = inputData.getString(KEY_JOB_ID) ?: return Result.failure()
         val bookId = inputData.getString(KEY_BOOK_ID)
-            ?: return failure(jobId, "No se recibió el libro")
-        ImportStatusStore.progress(jobId, 0, "Preparando reanálisis…")
+            ?: return failure(jobId, applicationContext.getString(R.string.import_error_no_book))
+        ImportStatusStore.progress(jobId, 0, applicationContext.getString(R.string.import_preparing_reprocess))
 
         return try {
             val app = applicationContext as TerminoApp
@@ -39,7 +40,10 @@ class BookReprocessWorker(
             val result = importer.reprocessBook(bookId) { progress, message ->
                 ImportStatusStore.progress(jobId, progress, message)
             }
-            ImportStatusStore.success(jobId, result.bookId, result.warning, "Libro actualizado")
+            ImportStatusStore.success(
+                jobId, result.bookId, result.warning,
+                applicationContext.getString(R.string.import_book_updated)
+            )
             Result.success(
                 workDataOf(
                     KEY_BOOK_ID to result.bookId,
@@ -52,7 +56,7 @@ class BookReprocessWorker(
             failure(
                 jobId,
                 error.message?.takeIf { it.isNotBlank() }
-                    ?: "No se pudo reanalizar el libro"
+                    ?: applicationContext.getString(R.string.import_error_reprocess_failed)
             )
         }
     }

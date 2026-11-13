@@ -8,9 +8,9 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * Fragmento indexado de un libro. [bookId] es un identificador opaco del
- * proyecto que usa el módulo: el índice no conoce la tabla de libros, así que
- * borrar un libro implica llamar a [HybridRagEngine.clearIndex].
+ * An indexed chunk of a book. [bookId] is an opaque identifier owned by the
+ * project using the module: the index does not know the books table, so
+ * deleting a book requires calling [HybridRagEngine.clearIndex].
  */
 @Entity(
     tableName = "rag_chunks",

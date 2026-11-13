@@ -9,18 +9,18 @@ import android.widget.FrameLayout
 import kotlin.math.abs
 
 /**
- * FrameLayout raíz del lector que intercepta los swipes horizontales a nivel
- * superior, antes de que el NestedScrollView o el TextView (selección de
- * texto) puedan robarse el gesto.
+ * Root FrameLayout of the reader that intercepts horizontal swipes at the top
+ * level, before the NestedScrollView or the TextView (text selection) can
+ * steal the gesture.
  *
- * - No intercepta en ACTION_DOWN: el gesto empieza a cederse a los hijos, así
- *   que el scroll vertical, el long-press y los taps siguen funcionando.
- * - Solo reclama el gesto cuando el movimiento es claramente horizontal
- *   (doble touchSlop y dominio horizontal 1.5x) y rápido (< 600 ms), y solo
- *   si [canSwipe] lo permite (p. ej. sin selección de texto activa).
- * - Una vez interceptado, consume los MOVE y, en el UP, dispara
- *   [onSwipeLeft] (dedo a la izquierda = página siguiente) o [onSwipeRight]
- *   (página anterior) según el desplazamiento total.
+ * - It does not intercept on ACTION_DOWN: the gesture starts out going to the
+ *   children, so vertical scroll, long-press and taps keep working.
+ * - It only claims the gesture when the movement is clearly horizontal
+ *   (twice the touch slop and 1.5x horizontal dominance) and fast (< 600 ms),
+ *   and only if [canSwipe] allows it (e.g. no active text selection).
+ * - Once intercepted, it consumes MOVE events and on UP fires [onSwipeLeft]
+ *   (finger to the left = next page) or [onSwipeRight] (previous page)
+ *   based on the total displacement.
  */
 class ReaderGestureLayout @JvmOverloads constructor(
     context: Context,
@@ -28,16 +28,16 @@ class ReaderGestureLayout @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
-    /** Dedo hacia la izquierda: página siguiente. */
+    /** Finger moving left: next page. */
     var onSwipeLeft: (() -> Unit)? = null
 
-    /** Dedo hacia la derecha: página anterior. */
+    /** Finger moving right: previous page. */
     var onSwipeRight: (() -> Unit)? = null
 
-    /** Si devuelve false no se intercepta ningún gesto (p. ej. hay selección activa). */
+    /** When it returns false no gesture is intercepted (e.g. an active selection). */
     var canSwipe: (() -> Boolean)? = null
 
-    /** Pellizco con dos dedos: inicio (foco), factor acumulado y final. */
+    /** Two-finger pinch: start (focus), accumulated factor and end. */
     var onPinchStart: ((focusX: Float, focusY: Float) -> Unit)? = null
     var onPinch: ((factor: Float) -> Unit)? = null
     var onPinchEnd: ((factor: Float) -> Unit)? = null
@@ -85,8 +85,8 @@ class ReaderGestureLayout @JvmOverloads constructor(
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         if (onPinch != null) scaleDetector.onTouchEvent(ev)
-        // Segundo dedo: el gesto pasa a ser un pellizco y se le quita al texto
-        // (que recibe CANCEL, sin selección ni scroll accidental).
+        // Second finger: the gesture becomes a pinch and is taken from the text
+        // (which receives CANCEL, so no accidental selection or scroll).
         if (ev.actionMasked == MotionEvent.ACTION_POINTER_DOWN && ev.pointerCount >= 2 && onPinch != null) {
             pinchMode = true
             intercepting = false

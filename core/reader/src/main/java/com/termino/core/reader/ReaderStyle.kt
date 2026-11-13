@@ -1,14 +1,17 @@
 package com.termino.core.reader
 
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 
-/** Límites del tamaño de letra del lector (sp). */
+/** Reader font size bounds (sp). */
 const val MIN_FONT_SIZE = 12
 const val MAX_FONT_SIZE = 40
 
 /**
- * Subrayado que pinta el lector: solo lo que necesita el motor (rango y
- * color), sin depender de cómo lo persista cada app.
+ * A highlight drawn by the reader: only what the engine needs (range and
+ * color), independent of how each app persists it.
  */
 data class ReaderHighlight(
     val id: String,
@@ -18,15 +21,15 @@ data class ReaderHighlight(
 )
 
 /**
- * Tema del lector. [AUTO] sigue el modo claro/oscuro de la app y se resuelve
- * a LIGHT o DARK antes de pintar; [BLACK] es negro puro (OLED).
+ * Reader theme. [AUTO] follows the app's light/dark mode and is resolved to
+ * LIGHT or DARK before drawing; [BLACK] is pure black (OLED).
  */
-enum class ReaderTheme(val label: String) {
-    AUTO("Auto"),
-    LIGHT("Claro"),
-    SEPIA("Sepia"),
-    DARK("Oscuro"),
-    BLACK("Negro");
+enum class ReaderTheme(@StringRes val labelRes: Int) {
+    AUTO(R.string.reader_theme_auto),
+    LIGHT(R.string.reader_theme_light),
+    SEPIA(R.string.reader_theme_sepia),
+    DARK(R.string.reader_theme_dark),
+    BLACK(R.string.reader_theme_black);
 
     fun resolve(appIsDark: Boolean): ReaderTheme =
         if (this == AUTO) (if (appIsDark) DARK else LIGHT) else this
@@ -38,53 +41,61 @@ enum class ReaderTheme(val label: String) {
 }
 
 /**
- * Fuente del lector. [id] es una familia del sistema ("serif",
- * "sans-serif-condensed"...) o "file:<nombre>" para una fuente TTF/OTF que
- * el usuario importó (vive en files/fonts/).
+ * Reader font. [id] is a system family ("serif", "sans-serif-condensed"...)
+ * or "file:<name>" for a TTF/OTF font imported by the user (stored in
+ * files/fonts/).
  */
 @JvmInline
 value class ReaderFont(val id: String) {
     val isCustom: Boolean get() = id.startsWith(CUSTOM_PREFIX)
     val fileName: String? get() = if (isCustom) id.removePrefix(CUSTOM_PREFIX) else null
 
-    val label: String
+    /** String resource for built-in fonts, null for imported ones. */
+    @get:StringRes
+    val labelRes: Int?
         get() = builtIns.firstOrNull { it.first == id }?.second
-            ?: fileName?.substringBeforeLast('.')?.replace('_', ' ')
-            ?: id
+
+    /** Name of an imported font (derived from its file name), or the raw id. */
+    val label: String
+        get() = fileName?.substringBeforeLast('.')?.replace('_', ' ') ?: id
 
     companion object {
         const val CUSTOM_PREFIX = "file:"
         val SERIF = ReaderFont("serif")
         val SANS = ReaderFont("sans-serif")
 
-        /** Familias que trae Android (AOSP); si un fabricante no tiene alguna, cae a la por defecto. */
+        /** Families shipped with Android (AOSP); missing ones fall back to the default. */
         val builtIns = listOf(
-            "serif" to "Serif",
-            "sans-serif" to "Sans",
-            "sans-serif-light" to "Ligera",
-            "sans-serif-condensed" to "Condensada",
-            "sans-serif-medium" to "Media",
-            "monospace" to "Mono",
-            "serif-monospace" to "Máquina",
-            "casual" to "Informal",
-            "cursive" to "Manuscrita"
+            "serif" to R.string.reader_font_serif,
+            "sans-serif" to R.string.reader_font_sans,
+            "sans-serif-light" to R.string.reader_font_light,
+            "sans-serif-condensed" to R.string.reader_font_condensed,
+            "sans-serif-medium" to R.string.reader_font_medium,
+            "monospace" to R.string.reader_font_mono,
+            "serif-monospace" to R.string.reader_font_typewriter,
+            "casual" to R.string.reader_font_casual,
+            "cursive" to R.string.reader_font_cursive
         )
 
         fun fromStorage(value: String?): ReaderFont = when {
             value.isNullOrBlank() -> SERIF
-            value.equals("SERIF", ignoreCase = false) -> SERIF // valores del enum antiguo
+            value.equals("SERIF", ignoreCase = false) -> SERIF // legacy enum values
             value.equals("SANS", ignoreCase = false) -> SANS
             else -> ReaderFont(value)
         }
     }
 }
 
-enum class HighlightColor(val key: String, val label: String) {
-    YELLOW("yellow", "Amarillo"),
-    GREEN("green", "Verde"),
-    BLUE("blue", "Azul"),
-    PINK("pink", "Rosa"),
-    PURPLE("purple", "Morado");
+/** Localized name of the font: the resource for built-ins, the file name for imported fonts. */
+@Composable
+fun ReaderFont.displayName(): String = labelRes?.let { stringResource(it) } ?: label
+
+enum class HighlightColor(val key: String, @StringRes val labelRes: Int) {
+    YELLOW("yellow", R.string.reader_color_yellow),
+    GREEN("green", R.string.reader_color_green),
+    BLUE("blue", R.string.reader_color_blue),
+    PINK("pink", R.string.reader_color_pink),
+    PURPLE("purple", R.string.reader_color_purple);
 
     companion object {
         fun fromKey(value: String?): HighlightColor =
@@ -107,7 +118,7 @@ data class ReaderColors(
 )
 
 fun readerColors(theme: ReaderTheme): ReaderColors = when (theme) {
-    // AUTO se resuelve antes de pintar; aquí solo llega en vistas previas.
+    // AUTO is resolved before drawing; it only reaches here in previews.
     ReaderTheme.AUTO, ReaderTheme.LIGHT -> ReaderColors(
         background = Color(0xFFF7F3EA),
         surface = Color(0xFFFCF9F2),

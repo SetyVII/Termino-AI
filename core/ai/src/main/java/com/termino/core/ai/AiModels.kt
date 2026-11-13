@@ -23,9 +23,9 @@ sealed interface AiStreamEvent {
 class AiException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
 /**
- * Forma de la petición que acepta un proveedor+modelo concreto. Se aprende
- * en tiempo de ejecución a partir de los 400 del propio proveedor en lugar
- * de mantener listas de modelos a mano.
+ * Request shape accepted by a specific provider+model. It is learned at
+ * runtime from the provider's own HTTP 400 responses instead of keeping
+ * hand-written model lists.
  */
 data class RequestShape(
     val includeReasoning: Boolean = true,
@@ -34,7 +34,7 @@ data class RequestShape(
     val reasoningRejected: Boolean = false
 )
 
-/** Modelo tal como lo describe GET /models; los metadatos son opcionales. */
+/** A model as described by GET /models; metadata fields are optional. */
 data class ProviderModel(
     val id: String,
     val contextLength: Int? = null,

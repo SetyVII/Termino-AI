@@ -2,10 +2,11 @@
 
 package com.termino.ui.screens
 
+import com.termino.R
 import com.termino.core.reader.NativeReaderView
+import androidx.compose.ui.res.stringResource
 import com.termino.core.reader.readerColors
 import android.content.Intent
-import android.util.Log
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -102,7 +103,7 @@ fun TabletReaderScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showAppearance by remember { androidx.compose.runtime.mutableStateOf(false) }
     ReaderWindowEffects(state = state, viewModel = viewModel)
-    // El tema "Auto" del lector sigue el modo claro/oscuro efectivo de la app.
+    // The reader "Auto" theme follows the effective app light/dark mode.
     val appDark = androidx.compose.material3.MaterialTheme.colorScheme.background.luminance() < 0.5f
     LaunchedEffect(appDark) { viewModel.setAppDark(appDark) }
     val typefaceFor = rememberTypefaceResolver()
@@ -115,10 +116,6 @@ fun TabletReaderScreen(
             duration = SnackbarDuration.Short
         )
         viewModel.clearToast()
-    }
-
-    LaunchedEffect(state.referencePreview) {
-        Log.d("LectorReader", "screen referencePreview=${state.referencePreview?.size}")
     }
 
     LaunchedEffect(state.externalLink) {
@@ -271,22 +268,22 @@ fun TabletReaderScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
-                    // En móvil la barra de página ocupa el borde inferior: subimos la burbuja
-                    // para que no la tape ni quede bajo la snackbar.
+                    // On phones the page bar takes the bottom edge: the bubble is raised
+                    // so it does not cover it or sit under the snackbar.
                     .padding(end = if (compact) 14.dp else 20.dp, bottom = if (compact) 78.dp else 20.dp)
             )
         }
 
-        // Filtro de cuidado de la vista: velo cálido sobre todo el lector
-        // (texto, barra superior y panel de IA) para reducir la luz azul.
-        // Solo pinta el fondo; sin clickable ni pointerInput no consume
-        // toques y los gestos llegan al contenido que cubre. Los sheets y
-        // diálogos son ventanas aparte y quedan sobre este filtro.
+        // Eye-care filter: a warm veil over the whole reader (text, top bar
+        // and AI panel) to reduce blue light. It only paints a background;
+        // with no clickable or pointerInput it consumes no touches, so
+        // gestures reach the content below. Sheets and dialogs are separate
+        // windows and stay above this filter.
         if (state.eyeCare) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0x16FF9800)) // ámbar muy suave, ~9% alpha
+                    .background(Color(0x16FF9800)) // very soft amber, ~9% alpha
             )
         }
 
@@ -393,8 +390,8 @@ private fun ReaderPane(
         viewModel.navigateBack()
     }
 
-    // Las barras se superponen al texto: mostrarlas u ocultarlas no cambia el
-    // área de lectura, así que el texto no salta ni se repagina.
+    // The bars overlay the text: showing or hiding them does not change the
+    // reading area, so the text neither jumps nor repaginates.
     Box(
         modifier = modifier
             .background(colors.background)
@@ -402,7 +399,7 @@ private fun ReaderPane(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                // Insets "ignorando visibilidad": en modo inmersivo el área no cambia.
+                // Insets "ignoring visibility": the area does not change in immersive mode.
                 .windowInsetsPadding(
                     androidx.compose.foundation.layout.WindowInsets.statusBarsIgnoringVisibility
                 )
@@ -440,7 +437,7 @@ private fun ReaderPane(
             if (state.loading && state.error == null) {
                 LoadingOverlay(colors = colors)
             }
-            // Indicador del tamaño de letra mientras se pellizca.
+            // Font size indicator while pinching.
             AnimatedVisibility(
                 visible = state.fontSizePreview != null,
                 modifier = Modifier.align(Alignment.Center),
@@ -501,12 +498,12 @@ private fun ReaderPane(
                     ) {
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Volver",
+                            contentDescription = stringResource(R.string.back),
                             modifier = Modifier.size(15.dp)
                         )
                         Spacer(Modifier.width(5.dp))
                         Text(
-                            "Volver",
+                            stringResource(R.string.back),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -618,7 +615,7 @@ private fun LoadingOverlay(colors: com.termino.core.reader.ReaderColors) {
             CircularProgressIndicator(color = colors.accent)
             Spacer(Modifier.height(14.dp))
             Text(
-                text = "Preparando tu libro…",
+                text = stringResource(R.string.book_preparing),
                 fontSize = 13.sp,
                 color = colors.muted
             )
@@ -650,7 +647,7 @@ private fun ReaderErrorOverlay(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "No se pudo abrir el libro",
+                    text = stringResource(R.string.book_open_failed),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.foreground
@@ -665,7 +662,7 @@ private fun ReaderErrorOverlay(
                 )
                 Spacer(Modifier.height(14.dp))
                 Button(onClick = onBack) {
-                    Text("Volver a la biblioteca")
+                    Text(stringResource(R.string.back_to_library))
                 }
             }
         }
@@ -673,9 +670,8 @@ private fun ReaderErrorOverlay(
 }
 
 /**
- * Comportamiento de ventana mientras se lee: pantalla siempre encendida,
- * modo inmersivo (barras del sistema ocultas) cuando la interfaz del lector
- * está oculta, y paso de página con las teclas de volumen.
+ * Window behavior while reading: screen kept on, immersive mode (system bars
+ * hidden) while the reader UI is hidden, and page turns with the volume keys.
  */
 @Composable
 private fun ReaderWindowEffects(
@@ -692,7 +688,7 @@ private fun ReaderWindowEffects(
         val window = activity?.window
         if (window != null) {
             val controller = androidx.core.view.WindowCompat.getInsetsController(window, view)
-            // Los iconos de la barra de estado siguen al tema del lector, no al del sistema.
+            // Status bar icons follow the reader theme, not the system theme.
             val dark = com.termino.core.reader.readerColors(state.theme).isDark
             controller.isAppearanceLightStatusBars = !dark
             controller.isAppearanceLightNavigationBars = !dark
@@ -708,7 +704,7 @@ private fun ReaderWindowEffects(
             if (window != null) {
                 val controller = androidx.core.view.WindowCompat.getInsetsController(window, view)
                 controller.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-                // Al salir del lector se recupera la apariencia del tema de la app.
+                // Leaving the reader restores the app theme appearance.
                 val nightMode = (view.resources.configuration.uiMode and
                     android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
                     android.content.res.Configuration.UI_MODE_NIGHT_YES

@@ -1,5 +1,6 @@
 package com.termino.data.repo
 
+import com.termino.R
 import com.termino.core.parser.BookFormat
 import com.termino.core.parser.EpubProcessor
 import com.termino.core.parser.ParsedBook
@@ -49,7 +50,7 @@ class BookImporter(
         bookDir.mkdirs()
         var bookInserted = false
         try {
-            onProgress(1, "Copiando archivo…")
+            onProgress(1, context.getString(R.string.import_copying))
             val displayName = when (source) {
                 is ImportSource.ContentUri -> source.displayName
                 is ImportSource.Asset -> source.displayName
@@ -58,10 +59,10 @@ class BookImporter(
             val input = when (source) {
                 is ImportSource.ContentUri -> context.contentResolver.openInputStream(source.uri)
                 is ImportSource.Asset -> context.assets.open(source.path)
-            } ?: throw IllegalArgumentException("No se pudo abrir el archivo seleccionado")
+            } ?: throw IllegalArgumentException(context.getString(R.string.import_error_open))
             input.use { copyToFile(it, tempFile) }
             if (!tempFile.exists() || tempFile.length() == 0L) {
-                throw IllegalArgumentException("El archivo está vacío o no se puede leer")
+                throw IllegalArgumentException(context.getString(R.string.import_error_empty))
             }
 
             val format = detectFormat(tempFile, displayName)
@@ -74,7 +75,7 @@ class BookImporter(
                 tempFile.delete()
             }
 
-            onProgress(10, "Analizando ${format.name}…")
+            onProgress(10, context.getString(R.string.import_parsing, format.name))
             val parsed = when (format) {
                 BookFormat.EPUB -> FileInputStream(bookFile).use { stream ->
                     epubProcessor.parse(stream, bookDir)
@@ -84,7 +85,7 @@ class BookImporter(
                 }
             }
             if (parsed.chapters.isEmpty()) {
-                throw IllegalArgumentException("No se encontró contenido legible en el libro")
+                throw IllegalArgumentException(context.getString(R.string.import_error_no_content))
             }
 
             saveAssets(parsed, bookDir, basePercent = 34, spanPercent = 4, onProgress)
@@ -93,8 +94,8 @@ class BookImporter(
             val now = System.currentTimeMillis()
             val book = BookEntity(
                 id = bookId,
-                title = parsed.title.ifBlank { displayName ?: "Libro sin título" },
-                author = parsed.author.ifBlank { "Autor desconocido" },
+                title = parsed.title.ifBlank { displayName ?: context.getString(R.string.parser_untitled_book) },
+                author = parsed.author.ifBlank { context.getString(R.string.parser_unknown_author) },
                 format = parsed.format.name,
                 filePath = bookFile.absolutePath,
                 coverPath = coverFile?.absolutePath,
@@ -114,18 +115,18 @@ class BookImporter(
             // Book, chapters and references are inserted as one atomic
             // transaction, in batches, so a mid-import failure never leaves
             // a half-populated book behind.
-            onProgress(39, "Guardando capítulos…")
+            onProgress(39, context.getString(R.string.import_saving_chapters))
             database.withTransaction {
                 database.bookDao().insert(book)
                 insertChaptersAndReferences(bookId, parsed)
             }
             bookInserted = true
 
-            onProgress(41, "Construyendo índice híbrido…")
-            val warning = indexRag(bookId, parsed, "Libro listo.", onProgress)
+            onProgress(41, context.getString(R.string.import_building_index))
+            val warning = indexRag(bookId, parsed, context.getString(R.string.import_book_ready), onProgress)
 
             File(bookDir, "epub_extract").deleteRecursively()
-            onProgress(100, warning ?: "Listo para leer")
+            onProgress(100, warning ?: context.getString(R.string.import_ready))
             ImportResult(bookId = bookId, warning = warning)
         } catch (error: Exception) {
             if (bookInserted) {
@@ -167,17 +168,17 @@ class BookImporter(
         onProgress: (Int, String) -> Unit
     ): ImportResult = withContext(Dispatchers.IO) {
         val book = database.bookDao().getById(bookId)
-            ?: throw IllegalArgumentException("El libro ya no está en la biblioteca")
+            ?: throw IllegalArgumentException(context.getString(R.string.import_error_missing_book))
         val bookFile = File(book.filePath)
         if (!bookFile.isFile || !bookFile.canRead()) {
-            throw IllegalArgumentException("No se encontró el archivo original del libro")
+            throw IllegalArgumentException(context.getString(R.string.import_error_missing_source))
         }
         val bookDir = (bookFile.parentFile ?: File(context.filesDir, "books/$bookId"))
             .apply { mkdirs() }
         // Clear leftovers from a previously interrupted run before parsing.
         File(bookDir, "epub_extract").deleteRecursively()
 
-        onProgress(10, "Analizando ${book.format}…")
+        onProgress(10, context.getString(R.string.import_parsing, book.format))
         val format = runCatching { BookFormat.valueOf(book.format.trim().uppercase()) }
             .getOrNull()
             ?: detectFormat(bookFile, null)
@@ -190,7 +191,7 @@ class BookImporter(
             }
         }
         if (parsed.chapters.isEmpty()) {
-            throw IllegalArgumentException("No se encontró contenido legible en el libro")
+            throw IllegalArgumentException(context.getString(R.string.import_error_no_content))
         }
 
         // Back up the assets directory before clearing it so a mid-way
@@ -209,7 +210,7 @@ class BookImporter(
 
             val coverFile = saveCover(parsed, bookFile, bookDir)
 
-            onProgress(39, "Actualizando capítulos…")
+            onProgress(39, context.getString(R.string.import_updating_chapters))
             val maxChapterIndex = parsed.chapters.size - 1
             val maxPageIndex = (parsed.totalPages - 1).coerceAtLeast(0)
             val updated = book.copy(
@@ -237,12 +238,12 @@ class BookImporter(
                 insertChaptersAndReferences(bookId, parsed)
             }
 
-            onProgress(41, "Construyendo índice híbrido…")
-            val warning = indexRag(bookId, parsed, "Libro actualizado.", onProgress)
+            onProgress(41, context.getString(R.string.import_building_index))
+            val warning = indexRag(bookId, parsed, context.getString(R.string.import_book_updated) + ".", onProgress)
 
             File(bookDir, "epub_extract").deleteRecursively()
             assetsBackup.deleteRecursively()
-            onProgress(100, warning ?: "Libro actualizado")
+            onProgress(100, warning ?: context.getString(R.string.import_book_updated))
             ImportResult(bookId = bookId, warning = warning)
         } catch (error: Exception) {
             if (assetsBackedUp) {
@@ -312,9 +313,9 @@ class BookImporter(
                 onProgress(
                     percent.coerceAtMost(basePercent + spanPercent),
                     if (totalAssets > 1) {
-                        "Guardando imágenes (${index + 1}/$totalAssets)…"
+                        context.getString(R.string.import_saving_images_count, index + 1, totalAssets)
                     } else {
-                        "Guardando imágenes…"
+                        context.getString(R.string.import_saving_images)
                     }
                 )
             }
@@ -344,8 +345,8 @@ class BookImporter(
                     temp.delete()
                 }
             } catch (error: Exception) {
-                // La portada anterior (si la había) queda intacta: solo se
-                // limpia el temporal a medio escribir.
+                // The previous cover (if any) stays intact: only the
+                // half-written temporary file is removed.
                 temp.delete()
                 throw error
             }
@@ -397,7 +398,7 @@ class BookImporter(
             ) { indexProgress ->
                 onProgress(
                     41 + (indexProgress * 57 / 100),
-                    "Indexando búsqueda local…"
+                    context.getString(R.string.import_indexing)
                 )
             }
             database.bookDao().updateRagState(bookId, true, null)
@@ -406,9 +407,9 @@ class BookImporter(
             throw cancelled
         } catch (indexError: Exception) {
             val message = indexError.message?.takeIf { it.isNotBlank() }
-                ?: "No se pudo construir el índice de búsqueda"
+                ?: context.getString(R.string.import_index_failed)
             database.bookDao().updateRagState(bookId, false, message)
-            "$readyMessage El índice RAG falló: $message"
+            context.getString(R.string.import_index_failed_warning, readyMessage, message)
         }
     }
 
@@ -421,7 +422,7 @@ class BookImporter(
                 if (read <= 0) break
                 total += read
                 if (total > 768L * 1024L * 1024L) {
-                    throw IllegalArgumentException("El archivo supera el límite de 768 MB")
+                    throw IllegalArgumentException(context.getString(R.string.import_error_too_large))
                 }
                 stream.write(buffer, 0, read)
             }
@@ -450,6 +451,6 @@ class BookImporter(
                 return BookFormat.PDF
             }
         }
-        throw IllegalArgumentException("Formato no compatible. Importa un EPUB o un PDF.")
+        throw IllegalArgumentException(context.getString(R.string.import_error_unsupported))
     }
 }

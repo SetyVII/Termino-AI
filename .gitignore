@@ -28,12 +28,12 @@ captures/
 *.log
 imports/
 
-# Firma de release (nunca al repo)
+# Release signing (never commit)
 *.jks
 *.keystore
 keystore/
 
-# Herramientas locales / agentes
+# Local tooling
 .claude/
 .agents/
 .kotlin/

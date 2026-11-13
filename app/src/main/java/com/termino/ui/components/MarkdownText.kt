@@ -57,10 +57,10 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Carácter de cursor mostrado al final del texto mientras llega el streaming. */
+/** Cursor character shown at the end of the text while streaming. */
 private const val STREAMING_CARET = "▍"
 
-/** Marcador interno para pipes escapados (`\|`) dentro de celdas de tabla. */
+/** Internal placeholder for escaped pipes (`\|`) inside table cells. */
 private const val ESCAPED_PIPE_PLACEHOLDER = "\u0001"
 
 private enum class TableAlignment { LEFT, CENTER, RIGHT }
@@ -86,26 +86,26 @@ private val ruleLineRegex = Regex("^(-{3,}|\\*{3,}|_{3,})$")
 private val tableDelimiterCellRegex = Regex("^:?-{1,}:?$")
 private val numericCellRegex = Regex("^[+\\-]?[\\d.,\\s]*\\d+([.,]\\d+)?\\s*%?$")
 
-/** Filas mínimas antes de activar el fondo alterno de la tabla. */
+/** Minimum rows before alternating table row backgrounds kick in. */
 private const val TABLE_ZEBRA_MIN_ROWS = 4
 
 /**
- * Ancho del degradado que desvanece el contenido en los extremos de una
- * tabla ancha, insinuando que se puede seguir desplazando en horizontal.
+ * Width of the gradient that fades content at the edges of a wide table,
+ * hinting that it can be scrolled horizontally.
  */
 private val tableEdgeFadeWidth = 16.dp
 
 /**
- * Renderiza Markdown (subconjunto GFM: encabezados, listas anidadas/ordenadas,
- * citas, código, reglas, tablas con alineación y énfasis inline) con Compose puro.
+ * Renders Markdown (GFM subset: headings, nested/ordered lists, quotes,
+ * code, rules, aligned tables and inline emphasis) with pure Compose.
  *
- * Los colores decorativos se derivan de [color] y [accentColor] (no del
- * `MaterialTheme` de la app) para garantizar contraste correcto sobre el fondo
- * del lector, que puede no coincidir con el tema claro/oscuro del sistema.
+ * Decorative colors derive from [color] and [accentColor] (not the app's
+ * `MaterialTheme`) to guarantee contrast on the reader background, which may
+ * not match the system light/dark theme.
  *
- * @param streaming cuando es `true` añade un caret parpadeante al final del
- * último bloque; nunca lo duplica si el texto ya termina en `▍`.
- * @param accentColor color de acento para enlaces, marcadores y divisores.
+ * @param streaming when `true` adds a blinking caret at the end of the last
+ * block; never duplicated if the text already ends with `▍`.
+ * @param accentColor accent color for links, bullets and dividers.
  */
 @Composable
 fun MarkdownText(
@@ -276,8 +276,8 @@ private fun bulletMarkerFor(indent: Int): String = when (indent) {
 }
 
 /**
- * Alpha animada del caret de streaming. Devuelve 1f (sin animación) cuando
- * el caret está desactivado para no correr animaciones en bloques estáticos.
+ * Animated alpha of the streaming caret. Returns 1f (no animation) when the
+ * caret is disabled so static blocks run no animations.
  */
 @Composable
 private fun streamingCaretAlpha(enabled: Boolean): Float {
@@ -334,13 +334,12 @@ private fun CodeBlock(
 }
 
 /**
- * Tabla GFM: cabecera en una sola fila con fondo sutil y negrita, divisores
- * bajo la cabecera y entre filas, columnas con peso proporcional al contenido
- * y fondo alterno sutil solo a partir de [TABLE_ZEBRA_MIN_ROWS] filas. Si la
- * tabla estimada es más ancha que el contenedor se envuelve en
- * `horizontalScroll` con anchos fijos por columna, los extremos se desvanecen
- * sutilmente para indicar que queda contenido oculto y las celdas de cabecera
- * se recortan a dos líneas con elipsis para no disparar la altura de la fila.
+ * GFM table: single-line header with a subtle background and bold text,
+ * dividers below the header and between rows, columns weighted by content,
+ * and subtle zebra rows only from [TABLE_ZEBRA_MIN_ROWS] rows on. If the
+ * estimated table is wider than its container it is wrapped in
+ * `horizontalScroll` with fixed column widths, the edges fade to hint at
+ * hidden content and header cells are clipped to two lines with ellipsis.
  */
 @Composable
 private fun MarkdownTable(
@@ -364,13 +363,13 @@ private fun MarkdownTable(
     val rowDividerColor = color.copy(alpha = 0.10f)
     val headerBackground = accent.copy(alpha = 0.10f)
     val alternateRowBackground = color.copy(alpha = 0.04f)
-    // Con pocas filas el fondo alterno se percibe como ruido; solo se
-    // activa cuando la tabla tiene cierta altura.
+    // With few rows, zebra striping reads as noise; it only turns on once
+    // the table has some height.
     val zebra = table.rows.size >= TABLE_ZEBRA_MIN_ROWS
 
-    // Columnas numéricas (50%, 1.2, -3…) se alinean a la derecha automáticamente
-    // y usan cifras tabulares para que los dígitos cuadren verticalmente.
-    // remember(table) evita re-escanear todas las celdas en cada recomposición.
+    // Numeric columns (50%, 1.2, -3…) are right-aligned automatically and
+    // use tabular figures so digits line up vertically.
+    // remember(table) avoids rescanning every cell on each recomposition.
     val effectiveAlignments = remember(table) {
         (0 until columnCount).map { columnIndex ->
             val declared = table.alignments.getOrNull(columnIndex) ?: TableAlignment.LEFT
@@ -420,11 +419,10 @@ private fun MarkdownTable(
                             fixedWidth = if (wide) fixedWidths[columnIndex] else null,
                             header = true,
                             caret = isCaretCell,
-                            // En modo ancho una cabecera larguísima se recorta a
-                            // 2 líneas con elipsis para no disparar la altura de
-                            // la fila; la celda que lleva el caret queda libre
-                            // para que el streaming siempre sea visible. En
-                            // modo ajustado el soft-wrap decide solo.
+                            // In wide mode a very long header is clipped to
+                            // 2 lines with ellipsis; the cell holding the caret
+                            // stays free so streaming is always visible. In
+                            // fitted mode soft-wrap decides.
                             maxLines = if (wide && !isCaretCell) 2 else Int.MAX_VALUE,
                             overflow = if (wide && !isCaretCell) TextOverflow.Ellipsis else TextOverflow.Clip,
                             color = color,
@@ -475,18 +473,17 @@ private fun MarkdownTable(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    // Capa offscreen: el degradado de los extremos borra el
-                    // contenido con BlendMode.DstIn sin agujerear el fondo del
-                    // lector que hay detrás de la tabla.
+                    // Offscreen layer: the edge gradient erases content with
+                    // BlendMode.DstIn without punching through the reader
+                    // background behind the table.
                     .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                     .drawWithContent {
                         drawContent()
                         val fadeWidth = minOf(tableEdgeFadeWidth.toPx(), size.width / 3f)
                         if (fadeWidth > 0f) {
-                            // Cada extremo se desvanece en proporción a lo que
-                            // queda oculto en ese lado: al abrir la tabla solo
-                            // se insinúa el borde derecho, y al llegar al final
-                            // solo queda el izquierdo.
+                            // Each edge fades in proportion to what is hidden
+                            // on that side: initially only the right edge
+                            // fades, and at the end only the left one.
                             val leftAlpha = (scrollState.value.toFloat() / fadeWidth)
                                 .coerceIn(0f, 1f)
                             if (leftAlpha > 0f) {
@@ -552,9 +549,9 @@ private fun TableSurface(
 }
 
 /**
- * Celda de tabla: padding cómodo, alineación declarada (o detectada para
- * columnas numéricas) y recorte opcional a [maxLines] con elipsis, reservado
- * a las cabeceras de tablas anchas con scroll.
+ * Table cell: comfortable padding, declared (or detected for numeric
+ * columns) alignment and optional clipping to [maxLines] with ellipsis,
+ * reserved for headers of wide scrolling tables.
  */
 @Composable
 private fun RowScope.TableCell(
@@ -644,9 +641,9 @@ private fun parseMarkdown(markdown: String): List<MarkdownBlock> {
             index++
             continue
         }
-        // Tabla GFM: fila de cabecera con pipes + línea separadora de guiones.
-        // Si el separador aún no llegó (streaming), esto cae al caso de
-        // párrafo y se muestra como texto plano sin romper el layout.
+        // GFM table: header row with pipes + dash separator line. If the
+        // separator has not arrived yet (streaming), this falls through to a
+        // paragraph and renders as plain text without breaking the layout.
         if (line.contains("|") &&
             index + 1 < lines.size &&
             isTableDelimiterRow(lines[index + 1])
@@ -663,7 +660,7 @@ private fun parseMarkdown(markdown: String): List<MarkdownBlock> {
                 val rowTrim = rowLine.trim()
                 if (rowTrim.isEmpty() || !rowLine.contains("|")) break
                 if (rowTrim.startsWith("```") || rowTrim.startsWith("#")) break
-                // Evita tragarse la cabecera de una tabla consecutiva.
+                // Avoid swallowing the header of a consecutive table.
                 if (lines.getOrNull(index + 1)?.let { isTableDelimiterRow(it) } == true) break
                 rows.add(splitTableRow(rowLine))
                 index++
@@ -737,8 +734,8 @@ private fun parseMarkdown(markdown: String): List<MarkdownBlock> {
 }
 
 /**
- * Absorbe líneas de continuación indentadas de un elemento de lista para que
- * el texto envuelto de un bullet no se convierta en párrafos sueltos.
+ * Absorbs indented continuation lines of a list item so a bullet's wrapped
+ * text does not become separate paragraphs.
  */
 private fun appendContinuationLines(
     lines: List<String>,
@@ -796,8 +793,8 @@ private fun inlineMarkdown(
     caretAlpha: Float
 ): AnnotatedString {
     val codeBackground = baseColor.copy(alpha = 0.08f)
-    // Nunca duplica el caret: si el texto ya termina en ▍ se reemplaza por
-    // uno solo con estilo (y parpadeo) controlado.
+    // Never duplicate the caret: if the text already ends with ▍ it is
+    // replaced by a single styled (blinking) one.
     val body = if (caret && text.endsWith(STREAMING_CARET)) {
         text.dropLast(STREAMING_CARET.length)
     } else {

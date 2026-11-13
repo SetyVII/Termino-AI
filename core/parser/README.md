@@ -1,6 +1,6 @@
-# :core:parser — EPUB y PDF a libro estructurado
+# :core:parser — EPUB and PDF to a structured book
 
-Convierte archivos EPUB y PDF en un `ParsedBook` (metadatos, capítulos con HTML limpio y texto plano, imágenes, referencias e índice). No depende de la UI ni del RAG.
+Turns EPUB and PDF files into a `ParsedBook` (metadata, chapters with clean HTML and plain text, images, references and table of contents). It does not depend on the UI or the RAG module.
 
 ## API
 
@@ -8,16 +8,24 @@ Convierte archivos EPUB y PDF en un `ParsedBook` (metadatos, capítulos con HTML
 val book: ParsedBook = EpubProcessor().parse(inputStream, workDir)
 val toc: List<TocItem> = EpubProcessor().extractToc(epubFile)
 val pdf: ParsedBook = PdfProcessor(context).parse(inputStream, displayName)
-val cover: Bitmap? = PdfCoverRenderer.render(context, pdfFile) // portada
+val cover: Bitmap? = PdfCoverRenderer.render(context, pdfFile)
 ```
 
-## Qué resuelve
+Labels written into the parsed book ("Chapter 3", "Page 12", "Figure"…) come from `ParserLabels`. The defaults are English; pass localized values to both processors to match your UI language:
 
-- EPUB 2/3 con `ZipInputStream` + jsoup: limpieza de HTML, imágenes (reescaladas), **tablas a imagen** (`TableBitmapRenderer`, con `colspan`/`rowspan`), enlaces internos reescritos (`termino://anchor/<capítulo>/<id>`), notas al pie, bibliografía, afiliaciones y TOC jerárquico (nav.xhtml / toc.ncx).
-- PDF con PdfBox-Android: texto por página, desguionado y aviso de páginas escaneadas.
+```kotlin
+val labels = ParserLabels(chapter = "Capítulo %s", page = "Página %s", /* … */)
+val epub = EpubProcessor(labels)
+val pdf = PdfProcessor(context, labels)
+```
 
-## Por dónde mejorar
+## What it handles
 
-- OCR para PDFs escaneados.
-- Soporte de MOBI/AZW3 y CBZ.
-- Extracción de fórmulas (MathML) como texto.
+- EPUB 2/3 with `ZipInputStream` + jsoup: HTML cleanup, images (downscaled), **tables rendered to images** (`TableBitmapRenderer`, with `colspan`/`rowspan`), internal links rewritten (`termino://anchor/<chapter>/<id>`), footnotes, bibliography, affiliations and hierarchical TOC (nav.xhtml / toc.ncx).
+- PDF with PdfBox-Android: per-page text, de-hyphenation and a notice for scanned pages.
+
+## Possible improvements
+
+- OCR for scanned PDFs.
+- MOBI/AZW3 and CBZ support.
+- Formula extraction (MathML) as text.

@@ -21,10 +21,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class ConnectionUiState(
-    /** Lo único obligatorio: una API Key o la URL de un servidor compatible. */
+    /** The only required input: an API key or the URL of a compatible server. */
     val input: String = "",
     val providerId: String? = null,
-    /** true si el proveedor lo eligió la app por el prefijo de la clave. */
+    /** true if the app picked the provider from the key prefix. */
     val providerSuggested: Boolean = false,
     val apiKeyForUrl: String = "",
     val showAdvanced: Boolean = false,
@@ -124,7 +124,7 @@ class ConnectionViewModel(
         }
     }
 
-    /** Cambia los modelos elegidos tras verificar (ambos vienen del proveedor). */
+    /** Changes the chosen models after verification (both come from the provider). */
     fun chooseModels(fast: String, chat: String) {
         val current = _state.value.result ?: return
         val updated = current.copy(fastModel = fast, chatModel = chat)

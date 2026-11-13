@@ -77,14 +77,14 @@ data class ReaderUiState(
     val tapZones: Boolean = true,
     val volumeKeysTurnPages: Boolean = false,
     val keepScreenOn: Boolean = true,
-    /** PDF mostrado como página original renderizada (no aplica a EPUB). */
+    /** PDF shown as the original rendered page (not applicable to EPUB). */
     val pdfOriginalPages: Boolean = true,
     val bookmarks: List<com.termino.data.db.BookmarkEntity> = emptyList(),
     val search: SearchUi? = null,
-    /** Tema elegido (puede ser AUTO); [theme] es siempre el resuelto. */
+    /** Chosen theme (may be AUTO); [theme] is always the resolved one. */
     val themeChoice: ReaderTheme = ReaderTheme.LIGHT,
     val fonts: List<ReaderFont> = emptyList(),
-    /** Tamaño mostrado mientras se pellizca para cambiar la letra. */
+    /** Size shown while pinching to change the font size. */
     val fontSizePreview: Int? = null
 ) {
     val isPdf: Boolean get() = book?.format.equals("PDF", true)
@@ -98,11 +98,11 @@ data class ReaderUiState(
 data class SearchHit(
     val chapterIndex: Int,
     val chapterTitle: String,
-    /** Fragmento con la coincidencia en [matchStart, matchEnd). */
+    /** Snippet with the match at [matchStart, matchEnd). */
     val snippet: String,
     val matchStart: Int,
     val matchEnd: Int,
-    /** Texto exacto alrededor de la coincidencia para localizarla al saltar. */
+    /** Exact text around the match, used to locate it when jumping. */
     val locator: String
 )
 

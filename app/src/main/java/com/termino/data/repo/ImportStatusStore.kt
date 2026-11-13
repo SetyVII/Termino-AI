@@ -13,11 +13,11 @@ object ImportStatusStore {
 
     fun add(job: ImportJob) {
         _jobs.update { current ->
-            // Si ya existe un job activo con ese id, un add() (p. ej. un
-            // re-intento de importación) no debe resetearlo a 0/QUEUED:
-            // conserva su progress, state y message y solo refresca el
-            // nombre visible. Solo se reemplaza si el job anterior ya
-            // terminó (SUCCESS/ERROR) o no existe.
+            // If an active job with this id already exists, add() (e.g. an
+            // import retry) must not reset it to 0/QUEUED: it keeps its
+            // progress, state and message and only refreshes the display
+            // name. It is replaced only if the previous job finished
+            // (SUCCESS/ERROR) or does not exist.
             val effective = current.firstOrNull { it.id == job.id }
                 ?.takeIf { existing ->
                     existing.state == ImportJobState.QUEUED ||
@@ -48,8 +48,8 @@ object ImportStatusStore {
     fun success(
         id: String,
         bookId: String,
-        warning: String? = null,
-        successMessage: String? = null
+        warning: String?,
+        successMessage: String
     ) {
         _jobs.update { current ->
             current.map { job ->
@@ -57,7 +57,7 @@ object ImportStatusStore {
                     job.copy(
                         progress = 100,
                         state = ImportJobState.SUCCESS,
-                        message = warning ?: successMessage ?: "Listo para leer",
+                        message = warning ?: successMessage,
                         bookId = bookId
                     )
                 } else {

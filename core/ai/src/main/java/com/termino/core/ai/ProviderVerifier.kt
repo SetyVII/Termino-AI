@@ -2,7 +2,7 @@ package com.termino.core.ai
 
 import java.net.URI
 
-/** Fases visibles de la verificación, para animar el progreso en la UI. */
+/** Visible verification phases, used to animate progress in the UI. */
 enum class VerifyStage { CONNECTING, LISTING_MODELS, TESTING_MODEL, DONE }
 
 enum class VerifyFailure {
@@ -29,16 +29,16 @@ sealed interface VerifyResult {
 }
 
 /**
- * Verifica una conexión contra el proveedor real, sin catálogos fijos:
- *  1. Resuelve la URL base (pegada a mano, o la del proveedor elegido).
- *  2. GET /models con la clave: 401/403 = clave inválida.
- *  3. Elige modelo rápido y de chat a partir de lo que devuelve el proveedor
- *     (o respeta los que el usuario fijó en Avanzado).
- *  4. Hace una petición mínima real con cada modelo; si uno falla prueba el
- *     siguiente candidato.
+ * Verifies a connection against the real provider, with no fixed catalogs:
+ *  1. Resolves the base URL (typed by hand, or the chosen provider's).
+ *  2. GET /models with the key: 401/403 = invalid key.
+ *  3. Picks the fast and chat models from what the provider returns
+ *     (or keeps the ones the user set under Advanced).
+ *  4. Sends a minimal real request with each model; if one fails, tries the
+ *     next candidate.
  *
- * La clave solo se envía al proveedor elegido: nunca se "prueba" contra
- * varios proveedores a la vez, para no filtrarla a terceros.
+ * The key is only sent to the chosen provider: it is never "tried" against
+ * several providers at once, so it does not leak to third parties.
  */
 class ProviderVerifier(private val client: AiStreamingClient) {
 
@@ -95,8 +95,8 @@ class ProviderVerifier(private val client: AiStreamingClient) {
         val manualChat = manualChatModel.trim()
         val manualFast = manualFastModel.trim()
         if (resolvedBase == null) {
-            // Sin listado: solo se puede seguir si el usuario fijó un modelo
-            // y el servidor al menos respondió.
+            // No model list: we can only continue if the user set a model
+            // and the server at least responded.
             if (!reachedServer) return VerifyResult.Failure(VerifyFailure.UNREACHABLE, lastError)
             if (manualChat.isBlank()) return VerifyResult.Failure(VerifyFailure.NO_MODELS, lastError)
             resolvedBase = candidates.first()
@@ -165,7 +165,7 @@ class ProviderVerifier(private val client: AiStreamingClient) {
         )
         private val datedSuffix = Regex("""\d{4}-?\d{2}-?\d{2}|-\d{4}$""")
 
-        /** Modelos que el proveedor marca o nombra como aptos para chat. */
+        /** Models the provider flags or names as chat-capable. */
         fun chatCapable(models: List<ProviderModel>): List<ProviderModel> =
             models.filter { model ->
                 model.isChat != false && nonChatMarkers.none { model.id.lowercase().contains(it) }

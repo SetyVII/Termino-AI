@@ -1,5 +1,6 @@
 package com.termino.ui.components
 
+import com.termino.R
 import com.termino.core.parser.TocItem
 import com.termino.core.reader.HighlightColor
 import com.termino.core.reader.ReaderColors
@@ -7,6 +8,7 @@ import com.termino.core.reader.ReaderReference
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -97,7 +99,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
-import android.util.Log
 import com.termino.ai.SourceRef
 import com.termino.data.db.ChapterSummary
 import com.termino.data.db.HighlightEntity
@@ -145,7 +146,7 @@ fun ReaderPageBar(
             ) {
                 Icon(
                     Icons.Outlined.SkipPrevious,
-                    contentDescription = "Capítulo anterior",
+                    contentDescription = stringResource(R.string.nav_previous_chapter),
                     tint = if (canPrevChapter) colors.foreground else colors.muted.copy(alpha = 0.35f),
                     modifier = Modifier.size(19.dp)
                 )
@@ -153,7 +154,7 @@ fun ReaderPageBar(
             IconButton(onClick = onPrevious, modifier = Modifier.size(32.dp)) {
                 Icon(
                     Icons.Outlined.KeyboardArrowLeft,
-                    contentDescription = "Página anterior",
+                    contentDescription = stringResource(R.string.nav_previous_page),
                     tint = colors.foreground,
                     modifier = Modifier.size(20.dp)
                 )
@@ -176,7 +177,7 @@ fun ReaderPageBar(
             IconButton(onClick = onNext, modifier = Modifier.size(32.dp)) {
                 Icon(
                     Icons.Outlined.KeyboardArrowRight,
-                    contentDescription = "Página siguiente",
+                    contentDescription = stringResource(R.string.nav_next_page),
                     tint = colors.foreground,
                     modifier = Modifier.size(20.dp)
                 )
@@ -188,7 +189,7 @@ fun ReaderPageBar(
             ) {
                 Icon(
                     Icons.Outlined.SkipNext,
-                    contentDescription = "Capítulo siguiente",
+                    contentDescription = stringResource(R.string.nav_next_chapter),
                     tint = if (canNextChapter) colors.foreground else colors.muted.copy(alpha = 0.35f),
                     modifier = Modifier.size(19.dp)
                 )
@@ -318,7 +319,7 @@ fun ReaderTocSheet(
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = state.book?.title ?: "Navegación",
+                        text = state.book?.title ?: stringResource(R.string.toc_title_fallback),
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = colors.foreground,
@@ -327,9 +328,9 @@ fun ReaderTocSheet(
                     )
                     Text(
                         text = if (isPdf) {
-                            "${state.chapters.size} páginas"
+                            stringResource(R.string.toc_pages_count, state.chapters.size)
                         } else {
-                            "${state.chapters.size} capítulos • ${state.tocItems.size} secciones"
+                            stringResource(R.string.toc_chapters_sections_count, state.chapters.size, state.tocItems.size)
                         },
                         fontSize = 11.sp,
                         color = colors.muted
@@ -338,7 +339,7 @@ fun ReaderTocSheet(
                 IconButton(onClick = onDismiss) {
                     Icon(
                         Icons.Outlined.Close,
-                        contentDescription = "Cerrar contenido",
+                        contentDescription = stringResource(R.string.toc_close),
                         tint = colors.muted
                     )
                 }
@@ -346,12 +347,12 @@ fun ReaderTocSheet(
 
             Spacer(Modifier.height(8.dp))
 
-            // Pestañas estilo Moon+ Reader: Índice (TOC) / Capítulos / Subrayados
+            // Tabs: contents (TOC) / chapters / notes / bookmarks
             val tabs = listOf(
-                "Índice" to (state.tocItems.size.takeIf { it > 0 } ?: state.chapters.size),
-                "Capítulos" to state.chapters.size,
-                "Notas" to state.allHighlights.size,
-                "Marcas" to state.bookmarks.size
+                stringResource(R.string.toc_tab_contents) to (state.tocItems.size.takeIf { it > 0 } ?: state.chapters.size),
+                stringResource(R.string.toc_tab_chapters) to state.chapters.size,
+                stringResource(R.string.toc_tab_notes) to state.allHighlights.size,
+                stringResource(R.string.toc_tab_bookmarks) to state.bookmarks.size
             )
             TabRow(
                 selectedTabIndex = selectedTab,
@@ -391,7 +392,7 @@ fun ReaderTocSheet(
                         OutlinedTextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
-                            placeholder = { Text("Buscar sección o tema…", fontSize = 12.sp, color = colors.muted) },
+                            placeholder = { Text(stringResource(R.string.toc_search_placeholder), fontSize = 12.sp, color = colors.muted) },
                             leadingIcon = {
                                 Icon(
                                     Icons.Outlined.Search,
@@ -405,7 +406,7 @@ fun ReaderTocSheet(
                                     IconButton(onClick = { searchQuery = "" }) {
                                         Icon(
                                             Icons.Outlined.Close,
-                                            contentDescription = "Limpiar búsqueda",
+                                            contentDescription = stringResource(R.string.toc_search_clear),
                                             tint = colors.muted,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -450,7 +451,7 @@ fun ReaderTocSheet(
                             }
                         }
                     } else {
-                        // Fallback si el EPUB no tiene navigation.xhtml ni toc.ncx
+                        // Fallback when the EPUB has neither nav.xhtml nor toc.ncx
                         LazyColumn(
                             state = chapterListState,
                             modifier = Modifier
@@ -475,7 +476,7 @@ fun ReaderTocSheet(
                     }
                 }
                 1 -> {
-                    // TAB 1: LISTA PLANA DE CAPÍTULOS (SPINE)
+                    // Tab 1: flat chapter list (spine)
                     LazyColumn(
                         state = chapterListState,
                         modifier = Modifier
@@ -506,7 +507,7 @@ fun ReaderTocSheet(
                     onDelete = onDeleteBookmark
                 )
                 2 -> {
-                    // TAB 2: SUBRAYADOS Y NOTAS
+                    // Tab 2: highlights and notes
                     if (state.allHighlights.isEmpty()) {
                         Box(
                             modifier = Modifier
@@ -515,7 +516,7 @@ fun ReaderTocSheet(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Aún no tienes notas ni subrayados en este libro.",
+                                text = stringResource(R.string.toc_notes_empty),
                                 fontSize = 12.5.sp,
                                 color = colors.muted
                             )
@@ -531,7 +532,7 @@ fun ReaderTocSheet(
                             items(state.allHighlights, key = { it.id }) { highlight ->
                                 val chapterTitle = state.chapters
                                     .firstOrNull { it.chapterIndex == highlight.chapterIndex }?.title
-                                    ?: "Capítulo ${highlight.chapterIndex + 1}"
+                                    ?: stringResource(R.string.chapter_fallback, highlight.chapterIndex + 1)
                                 TocHighlightRow(
                                     highlight = highlight,
                                     chapterTitle = chapterTitle,
@@ -649,7 +650,7 @@ private fun TocHierarchyRow(
                 Spacer(Modifier.width(6.dp))
                 Icon(
                     Icons.Outlined.Check,
-                    contentDescription = "Capítulo actual",
+                    contentDescription = stringResource(R.string.nav_current_chapter),
                     tint = colors.accent,
                     modifier = Modifier.size(15.dp)
                 )
@@ -776,14 +777,14 @@ private fun TocChapterRow(
             if (selected) {
                 Icon(
                     Icons.Outlined.Check,
-                    contentDescription = "Capítulo actual",
+                    contentDescription = stringResource(R.string.nav_current_chapter),
                     tint = colors.accent,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(Modifier.width(6.dp))
             }
             Text(
-                text = "$wordCount palabras",
+                text = stringResource(R.string.word_count, wordCount),
                 fontSize = 9.5.sp,
                 color = colors.muted,
                 maxLines = 1
@@ -858,7 +859,7 @@ fun QuickActionSheet(
                 IconButton(onClick = onDismiss) {
                     Icon(
                         Icons.Outlined.Close,
-                        contentDescription = "Cerrar",
+                        contentDescription = stringResource(R.string.action_close),
                         tint = colors.muted
                     )
                 }
@@ -872,7 +873,7 @@ fun QuickActionSheet(
                 )
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "Consultando el contexto del capítulo…",
+                    text = stringResource(R.string.quick_loading),
                     fontSize = 12.sp,
                     color = colors.muted
                 )
@@ -921,10 +922,10 @@ fun QuickActionSheet(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(Modifier.width(6.dp))
-                    Text("Preguntar al libro", fontSize = 12.sp)
+                    Text(stringResource(R.string.quick_ask_book), fontSize = 12.sp)
                 }
                 TextButton(onClick = onDismiss) {
-                    Text("Cerrar", fontSize = 12.sp, color = colors.muted)
+                    Text(stringResource(R.string.action_close), fontSize = 12.sp, color = colors.muted)
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -1018,12 +1019,12 @@ fun MinimizedAiBubble(
         ) {
             Icon(
                 Icons.Outlined.AutoAwesome,
-                contentDescription = "Abrir asistente",
+                contentDescription = stringResource(R.string.open_assistant),
                 modifier = Modifier.size(18.dp)
             )
             Spacer(Modifier.width(7.dp))
             Text(
-                text = "IA",
+                text = stringResource(R.string.assistant_badge),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White
@@ -1065,13 +1066,13 @@ fun HiddenTopBarButton(
         ) {
             Icon(
                 Icons.Outlined.MenuBook,
-                contentDescription = "Mostrar barra superior",
+                contentDescription = stringResource(R.string.show_top_bar),
                 tint = colors.accent,
                 modifier = Modifier.size(17.dp)
             )
             Spacer(Modifier.width(7.dp))
             Text(
-                text = bookTitle ?: "Leer",
+                text = bookTitle ?: stringResource(R.string.read_fallback),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 color = colors.foreground,
@@ -1130,7 +1131,7 @@ fun HighlightActionSheet(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Subrayado · ${highlight.pageLabel}",
+                    text = stringResource(R.string.highlight_header, highlight.pageLabel),
                     modifier = Modifier.weight(1f),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -1139,13 +1140,13 @@ fun HighlightActionSheet(
                 IconButton(onClick = onDismiss) {
                     Icon(
                         Icons.Outlined.Close,
-                        contentDescription = "Cerrar",
+                        contentDescription = stringResource(R.string.action_close),
                         tint = colors.muted
                     )
                 }
             }
             Text(
-                text = "«${highlight.selectedText}»",
+                text = stringResource(R.string.quoted_text, highlight.selectedText),
                 fontSize = 13.sp,
                 lineHeight = 20.sp,
                 color = colors.foreground,
@@ -1171,7 +1172,7 @@ fun HighlightActionSheet(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(Modifier.width(5.dp))
-                    Text("Preguntar", fontSize = 11.5.sp)
+                    Text(stringResource(R.string.action_ask), fontSize = 11.5.sp)
                 }
                 OutlinedButton(
                     onClick = onDefine,
@@ -1183,7 +1184,7 @@ fun HighlightActionSheet(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(Modifier.width(5.dp))
-                    Text("Definir", fontSize = 11.5.sp)
+                    Text(stringResource(R.string.action_define), fontSize = 11.5.sp)
                 }
                 OutlinedButton(
                     onClick = onExplain,
@@ -1195,7 +1196,7 @@ fun HighlightActionSheet(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(Modifier.width(5.dp))
-                    Text("Explicar", fontSize = 11.5.sp)
+                    Text(stringResource(R.string.action_explain), fontSize = 11.5.sp)
                 }
             }
             Spacer(Modifier.height(4.dp))
@@ -1211,7 +1212,7 @@ fun HighlightActionSheet(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "Quitar subrayado",
+                    stringResource(R.string.highlight_remove),
                     fontSize = 11.5.sp,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -1230,14 +1231,8 @@ fun ReferenceSheet(
     onJumpToSource: ((ReaderReference) -> Unit)? = null
 ) {
     var expandedKeys by remember { mutableStateOf(emptySet<String>()) }
-    LaunchedEffect(references) {
-        Log.d("LectorReader", "ReferenceSheet composed refs=${references.size}")
-    }
     ModalBottomSheet(
-        onDismissRequest = {
-            Log.d("LectorReader", "ReferenceSheet dismissed")
-            onDismiss()
-        },
+        onDismissRequest = onDismiss,
         containerColor = colors.surface,
         contentColor = colors.foreground,
         dragHandle = {
@@ -1266,13 +1261,13 @@ fun ReferenceSheet(
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = if (references.size == 1) "Referencia" else "Referencias",
+                        text = if (references.size == 1) stringResource(R.string.ref_title_one) else stringResource(R.string.ref_title_many),
                         fontSize = 17.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = colors.foreground
                     )
                     Text(
-                        text = "Vista rápida sin salir de la página",
+                        text = stringResource(R.string.ref_subtitle),
                         fontSize = 10.5.sp,
                         color = colors.muted
                     )
@@ -1280,7 +1275,7 @@ fun ReferenceSheet(
                 IconButton(onClick = onDismiss) {
                     Icon(
                         Icons.Outlined.Close,
-                        contentDescription = "Cerrar",
+                        contentDescription = stringResource(R.string.action_close),
                         tint = colors.muted
                     )
                 }
@@ -1307,20 +1302,20 @@ fun ReferenceSheet(
                         )
                     ) {
                         Column(Modifier.padding(13.dp)) {
+                            val anchorKey = (reference.anchor ?: reference.referenceKey.substringAfter(':'))
+                                .lowercase()
+                            val number = reference.numericKey ?: reference.label
                             val (pillText, subtitleText) = when {
-                                reference.label.startsWith("Afiliación", ignoreCase = true) ->
-                                    reference.label to "Afiliación"
-                                reference.label.startsWith("Contacto", ignoreCase = true) ->
-                                    "Contacto" to "Información de autor"
-                                reference.label.startsWith("Nota", ignoreCase = true) ->
-                                    reference.label to "Nota al pie"
-                                reference.anchor?.startsWith("fn", ignoreCase = true) == true ||
+                                anchorKey.startsWith("aff") ->
+                                    reference.label to stringResource(R.string.ref_affiliation)
+                                anchorKey.startsWith("contact") ->
+                                    stringResource(R.string.ref_contact) to stringResource(R.string.ref_author_info)
+                                anchorKey.startsWith("fn") ||
                                     reference.referenceKey.contains(":fn", ignoreCase = true) ->
-                                    "Nota ${reference.numericKey ?: reference.label}" to "Nota al pie"
-                                reference.referenceKey.startsWith("cr", ignoreCase = true) ||
-                                    reference.anchor?.startsWith("cr", ignoreCase = true) == true ->
-                                    "Cita [${reference.numericKey ?: reference.label}]" to "Bibliografía"
-                                else -> reference.label to "Referencia"
+                                    stringResource(R.string.ref_note_n, number) to stringResource(R.string.ref_footnote)
+                                anchorKey.startsWith("cr") ->
+                                    stringResource(R.string.ref_citation_n, number) to stringResource(R.string.ref_bibliography)
+                                else -> reference.label to stringResource(R.string.ref_reference)
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Surface(
@@ -1367,7 +1362,7 @@ fun ReferenceSheet(
                                     }
                                 ) {
                                     Text(
-                                        text = if (expanded) "Ver menos" else "Mostrar todo",
+                                        text = if (expanded) stringResource(R.string.ref_show_less) else stringResource(R.string.ref_show_all),
                                         fontSize = 11.sp,
                                         color = colors.accent
                                     )
@@ -1390,7 +1385,7 @@ fun ReferenceSheet(
                                         )
                                         Spacer(Modifier.width(4.dp))
                                         Text(
-                                            text = "Ir a la ubicación en el libro",
+                                            text = stringResource(R.string.ref_go_to_location),
                                             fontSize = 11.sp,
                                             color = colors.accent
                                         )
@@ -1413,17 +1408,16 @@ private sealed interface ImagePreviewState {
 }
 
 /**
- * Visor de imágenes del libro a pantalla completa.
+ * Full-screen viewer for book images.
  *
- * - Carga el bitmap con BitmapFactory en Dispatchers.IO (produceState) y lo
- *   ajusta al alto/ancho disponible con ContentScale.Fit.
- * - Pinch-to-zoom de 1x a 6x con detectTransformGestures. El zoom y el pan se
- *   aplican con Modifier.graphicsLayer leyendo el estado en la fase de
- *   dibujo, por lo que el gesto no desencadena recomposición y se mantiene
- *   fluido. El pan queda acotado al marco ampliado de la figura para que la
- *   imagen no se pierda fuera de la pantalla.
- * - Doble toque reinicia el zoom; un toque fuera de la figura, el botón ✕ y
- *   el gesto de atrás del sistema cierran el visor.
+ * - Loads the bitmap with BitmapFactory on Dispatchers.IO (produceState) and
+ *   fits it to the available size with ContentScale.Fit.
+ * - Pinch-to-zoom from 1x to 6x with detectTransformGestures. Zoom and pan
+ *   are applied with Modifier.graphicsLayer, reading state in the draw
+ *   phase, so the gesture triggers no recomposition and stays smooth. Pan
+ *   is bounded to the zoomed frame so the image never leaves the screen.
+ * - Double tap resets the zoom; a tap outside the image, the ✕ button and
+ *   the system back gesture close the viewer.
  */
 @Composable
 fun ImagePreviewDialog(
@@ -1465,11 +1459,10 @@ fun ImagePreviewDialog(
                             if (bitmap == null) {
                                 onDismiss()
                             } else {
-                                // Rect ajustado (ContentScale.Fit) y luego
-                                // transformado por el zoom alrededor del centro
-                                // más el pan, exactamente igual que el
-                                // graphicsLayer de la imagen: fuera de él, el
-                                // toque cierra el visor.
+                                // Fitted rect (ContentScale.Fit) transformed by
+                                // the zoom around the center plus the pan,
+                                // exactly like the image graphicsLayer: a tap
+                                // outside it closes the viewer.
                                 val boxWidth = size.width.toFloat()
                                 val boxHeight = size.height.toFloat()
                                 val aspect = bitmap.width.toFloat() /
@@ -1503,12 +1496,12 @@ fun ImagePreviewDialog(
                         val newScale = (scale * zoom).coerceIn(1f, 6f)
                         scale = newScale
                         if (newScale <= 1f) {
-                            // Sin zoom no hay pan: la figura vuelve a quedar
-                            // centrada en lugar de quedar desplazada al 100%.
+                            // No zoom means no pan: the image is centered again
+                            // instead of staying offset at 100%.
                             offset = Offset.Zero
                         } else {
-                            // Acota el pan al marco ampliado de la imagen para
-                            // que la figura nunca salga del todo de la pantalla.
+                            // Bound the pan to the zoomed image frame so it
+                            // never leaves the screen entirely.
                             val bitmap = (imageState as? ImagePreviewState.Ready)?.bitmap
                             val boxWidth = size.width.toFloat()
                             val boxHeight = size.height.toFloat()
@@ -1557,13 +1550,13 @@ fun ImagePreviewDialog(
                         )
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            text = "No se pudo cargar la imagen",
+                            text = stringResource(R.string.image_load_failed),
                             fontSize = 13.sp,
                             color = Color.White.copy(alpha = 0.7f)
                         )
                         Spacer(Modifier.height(6.dp))
                         TextButton(onClick = onDismiss) {
-                            Text("Cerrar", fontSize = 12.sp, color = colors.accent)
+                            Text(stringResource(R.string.action_close), fontSize = 12.sp, color = colors.accent)
                         }
                     }
                 }
@@ -1573,12 +1566,12 @@ fun ImagePreviewDialog(
                     }
                     Image(
                         bitmap = imageBitmap,
-                        contentDescription = "Imagen del libro",
+                        contentDescription = stringResource(R.string.image_description),
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .fillMaxSize()
-                            // Leer el estado dentro de la lambda hace que el
-                            // gesto solo redibuje la capa, sin recomponer.
+                            // Reading state inside the lambda makes the gesture
+                            // only redraw the layer, without recomposing.
                             .graphicsLayer {
                                 scaleX = scale
                                 scaleY = scale
@@ -1589,7 +1582,7 @@ fun ImagePreviewDialog(
                 }
             }
 
-            // Botón de cierre encima de todo, sin verse afectado por el zoom.
+            // Close button on top of everything, unaffected by the zoom.
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -1603,7 +1596,7 @@ fun ImagePreviewDialog(
             ) {
                 Icon(
                     Icons.Outlined.Close,
-                    contentDescription = "Cerrar imagen",
+                    contentDescription = stringResource(R.string.image_close),
                     tint = Color.White,
                     modifier = Modifier.size(20.dp)
                 )
@@ -1634,15 +1627,17 @@ fun ImagePreviewDialog(
 
 
 /**
- * Número visible del capítulo en el TOC. Usa el número que abre el título
- * ("11. Advanced Reasoning" -> "11") en vez del índice de spine, que incluye
- * portada, copyright, prefacio, etc. y confunde al lector.
+ * Visible chapter number in the TOC. Uses the number that opens the title
+ * ("11. Advanced Reasoning" -> "11") instead of the spine index, which counts
+ * cover, copyright, preface, etc. and confuses the reader. Falls back to the
+ * trailing number of the page label ("Chapter 3", "Página 12").
  */
 private fun chapterDisplayNumber(chapter: ChapterSummary): String {
-    val match = Regex("^\\s*(\\d+(?:\\.\\d+)*)").find(chapter.title)
+    val match = leadingNumber.find(chapter.title)
     if (match != null) return match.groupValues[1]
-    return chapter.pageLabel
-        .removePrefix("Capítulo ")
-        .removePrefix("Página ")
-        .ifBlank { (chapter.chapterIndex + 1).toString() }
+    return trailingNumber.find(chapter.pageLabel)?.groupValues?.get(1)
+        ?: (chapter.chapterIndex + 1).toString()
 }
+
+private val leadingNumber = Regex("^\\s*(\\d+(?:\\.\\d+)*)")
+private val trailingNumber = Regex("(\\d+(?:\\.\\d+)*)\\s*$")

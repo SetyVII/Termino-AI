@@ -141,8 +141,8 @@ data class ChapterSummary(
     val wordCount: Int
 )
 
-/** Marcador de página. [excerpt] es el inicio del texto visible: permite
- * volver al punto exacto aunque cambie el tamaño de letra (la página cambia). */
+/** Page bookmark. [excerpt] is the start of the visible text, so the exact
+ * spot can be restored even if the font size (and therefore the page) changes. */
 @Entity(
     tableName = "bookmarks",
     indices = [Index(value = ["bookId"])],
@@ -164,7 +164,7 @@ data class BookmarkEntity(
     val createdAt: Long
 )
 
-/** Texto plano de un capítulo para la búsqueda dentro del libro. */
+/** Plain text of a chapter, for in-book search. */
 data class ChapterText(
     val chapterIndex: Int,
     val title: String,

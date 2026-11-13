@@ -9,13 +9,13 @@ import java.io.InputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class PdfProcessor(private val context: Context) {
+class PdfProcessor(
+    private val context: Context,
+    private val labels: ParserLabels = ParserLabels()
+) {
 
     companion object {
-        /**
-         * Precompiled once instead of per page: this regex used to be rebuilt
-         * for every page of the document inside normalizePdfText.
-         */
+        /** Joins words hyphenated across a line break. */
         private val dehyphenationRegex = Regex("(\\p{Ll})-[ \\t]*\\n[ \\t]*(\\p{Ll})")
     }
 
@@ -29,15 +29,15 @@ class PdfProcessor(private val context: Context) {
                     ?.replace('_', ' ')
                     ?.trim()
                     ?.takeIf { it.isNotBlank() }
-                    ?: "Documento PDF"
+                    ?: labels.untitledPdf
                 val title = metadata?.title?.trim()?.takeIf { it.isNotBlank() } ?: fallbackTitle
                 val author = metadata?.author?.trim()?.takeIf { it.isNotBlank() }
-                    ?: "Autor desconocido"
+                    ?: labels.unknownAuthor
                 val description = metadata?.subject?.trim()?.takeIf { it.isNotBlank() }
 
                 val pageCount = document.numberOfPages
                 if (pageCount <= 0) {
-                    throw IllegalArgumentException("El PDF no contiene páginas")
+                    throw IllegalArgumentException("The PDF has no pages")
                 }
 
                 val chapters = mutableListOf<ParsedChapter>()
@@ -54,8 +54,7 @@ class PdfProcessor(private val context: Context) {
                     val plainText = paragraphs.joinToString("\n\n")
                     val wordCount = TextUtils.wordCount(plainText)
                     val html = if (paragraphs.isEmpty()) {
-                        "<p class=\"empty-page\">Esta página no contiene texto seleccionable. " +
-                            "Puede ser una página escaneada o una imagen.</p>"
+                        "<p class=\"empty-page\">${escapeHtml(labels.emptyPdfPage)}</p>"
                     } else {
                         paragraphs.joinToString(separator = "") { paragraph ->
                             "<p>${escapeHtml(paragraph)}</p>"
@@ -64,8 +63,8 @@ class PdfProcessor(private val context: Context) {
                     chapters.add(
                         ParsedChapter(
                             chapterIndex = page,
-                            title = "Página ${page + 1}",
-                            pageLabel = "Página ${page + 1}",
+                            title = labels.page(page + 1),
+                            pageLabel = labels.page(page + 1),
                             html = html,
                             plainText = plainText,
                             wordCount = wordCount

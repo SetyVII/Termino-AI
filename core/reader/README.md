@@ -1,27 +1,27 @@
-# :core:reader — Motor de lectura nativo y visor PDF
+# :core:reader — Native reading engine and PDF viewer
 
-Componentes de lectura **sin WebView** para Jetpack Compose. No conoce la base de datos ni los ViewModels de la app: recibe contenido y avisa de lo que hace el usuario.
+Reading components for Jetpack Compose **without WebView**. It knows nothing about the app database or ViewModels: it receives content and reports what the user does.
 
 ## API
 
-| Tipo | Para qué |
+| Type | Purpose |
 |---|---|
-| `NativeReaderController(context, assetDir)` | Pinta un capítulo (`load(ReaderContent)`), paginación, subrayados, referencias, saltos internos, búsqueda (`findAndReveal`), pellizco de tamaño de letra |
-| `NativeReaderView(controller, content)` | Composable que monta el `TextView` paginado y los gestos |
-| `ReaderInteractionListener` | Callbacks: página, selección, subrayados, referencias, toques, fin de capítulo, tamaño de letra… |
-| `PdfPageReader(...)` | Visor PDF con `PdfRenderer`: paginador, zoom con re-render nítido, modo noche que no invierte fotos |
-| `ReaderTheme`, `ReaderFont`, `HighlightColor`, `readerColors()` | Estilo del lector |
-| `ReaderHighlight`, `ReaderReference`, `ReaderContent` | Datos de entrada, independientes de la persistencia |
-| `ReaderGestureLayout`, `ReaderKeys` | Gestos (deslizar, pellizcar) y teclas de volumen |
+| `NativeReaderController(context, assetDir)` | Renders a chapter (`load(ReaderContent)`), pagination, highlights, references, internal jumps, search (`findAndReveal`), pinch-to-resize text |
+| `NativeReaderView(controller, content)` | Composable hosting the paginated `TextView` and gestures |
+| `ReaderInteractionListener` | Callbacks: page, selection, highlights, references, taps, end of chapter, font size… |
+| `PdfPageReader(...)` | PDF viewer backed by `PdfRenderer`: pager, zoom with sharp re-rendering, night mode that does not invert photos |
+| `ReaderTheme`, `ReaderFont`, `HighlightColor`, `readerColors()` | Reader styling (labels are string resources, see `res/values`) |
+| `ReaderHighlight`, `ReaderReference`, `ReaderContent` | Input data, independent of persistence |
+| `ReaderGestureLayout`, `ReaderKeys` | Gestures (swipe, pinch) and volume keys |
 
 ```kotlin
 val controller = NativeReaderController(context, File(filesDir, "books/$id/assets"))
-controller.listener = miListener
+controller.listener = myListener
 NativeReaderView(controller, ReaderContent(requestId, chapterIndex, html, initialPage = 0, highlights = emptyList()))
 ```
 
-## Por dónde mejorar
+## Possible improvements
 
-- Paginación real por columnas (hoy es scroll paginado con ajuste a líneas).
-- Guiones (hyphenation) configurables sin coste de rendimiento.
-- Texto a voz y selección/anotación sobre el PDF original.
+- True column pagination (currently paginated scrolling snapped to lines).
+- Configurable hyphenation without a performance cost.
+- Text-to-speech and selection/annotation on the original PDF page.

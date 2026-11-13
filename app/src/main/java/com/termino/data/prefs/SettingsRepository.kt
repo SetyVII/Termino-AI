@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
-private val Context.lectorDataStore: DataStore<Preferences> by preferencesDataStore(
+private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "termino_settings"
 )
 
@@ -32,7 +32,7 @@ data class AppSettings(
     val apiKey: String = "",
     val fastModel: String = "",
     val chatModel: String = "",
-    /** Nombre del proveedor tal como se verificó (solo para mostrar). */
+    /** Provider name as verified (display only). */
     val providerLabel: String = "",
     val aiLanguage: AiLanguage = AiLanguage.AUTO,
     val reasoningEffort: ReasoningEffort = ReasoningEffort.OFF,
@@ -46,16 +46,16 @@ data class AppSettings(
     val aiPaneFraction: Float = 0.36f,
     val eyeCare: Boolean = false,
     val onboardingCompleted: Boolean = false,
-    /** Tocar los bordes izquierdo/derecho pasa página; el centro muestra la interfaz. */
+    /** Tapping the left/right edges turns the page; the center shows the UI. */
     val tapZones: Boolean = true,
     val volumeKeysTurnPages: Boolean = false,
     val keepScreenOn: Boolean = true,
-    /** PDF: mostrar la página original renderizada (true) o el texto extraído. */
+    /** PDF: show the original rendered page (true) or the extracted text. */
     val pdfOriginalPages: Boolean = true,
     val appTheme: com.termino.data.model.AppThemeMode = com.termino.data.model.AppThemeMode.SYSTEM,
     val contextSize: com.termino.data.model.ContextSize = com.termino.data.model.ContextSize.AUTO
 ) {
-    /** Tamaño de contexto efectivo (AUTO resuelto según el servidor). */
+    /** Effective context size (AUTO resolved for the server). */
     val effectiveContextSize: com.termino.data.model.ContextSize
         get() = contextSize.resolve(isLocalEndpoint(baseUrl))
 
@@ -99,7 +99,7 @@ class SettingsRepository(private val context: Context) {
         val contextSize = stringPreferencesKey("ai_context_size")
     }
 
-    val settings: Flow<AppSettings> = context.lectorDataStore.data
+    val settings: Flow<AppSettings> = context.settingsDataStore.data
         .catch { error ->
             if (error is IOException) emit(emptyPreferences()) else throw error
         }
@@ -121,7 +121,7 @@ class SettingsRepository(private val context: Context) {
                 aiPaneMode = AiPaneMode.fromStorage(prefs[Keys.aiPaneMode]),
                 aiPaneFraction = (prefs[Keys.aiPaneFraction] ?: 0.36f).coerceIn(0.0f, 0.40f),
                 eyeCare = prefs[Keys.eyeCare] ?: false,
-                // Instalaciones previas que ya tenían IA configurada no ven el onboarding.
+                // Installs that already had AI configured skip onboarding.
                 onboardingCompleted = prefs[Keys.onboardingCompleted]
                     ?: (prefs[Keys.apiKey]?.isNotBlank() == true),
                 tapZones = prefs[Keys.tapZones] ?: true,
@@ -143,7 +143,7 @@ class SettingsRepository(private val context: Context) {
         temperature: Float,
         maxTokens: Int
     ) {
-        context.lectorDataStore.edit { prefs ->
+        context.settingsDataStore.edit { prefs ->
             prefs[Keys.baseUrl] = baseUrl.trim()
             prefs[Keys.apiKey] = apiKey.trim()
             prefs[Keys.fastModel] = fastModel.trim()
@@ -156,8 +156,8 @@ class SettingsRepository(private val context: Context) {
     }
 
     /**
-     * Guarda una conexión ya verificada contra el proveedor (onboarding o
-     * "Cambiar conexión" en Ajustes) y marca el onboarding como completado.
+     * Saves a connection already verified against the provider (onboarding or
+     * "Change connection" in Settings) and marks onboarding as completed.
      */
     suspend fun saveVerifiedConnection(
         baseUrl: String,
@@ -166,7 +166,7 @@ class SettingsRepository(private val context: Context) {
         fastModel: String,
         chatModel: String
     ) {
-        context.lectorDataStore.edit { prefs ->
+        context.settingsDataStore.edit { prefs ->
             prefs[Keys.baseUrl] = baseUrl.trim()
             prefs[Keys.apiKey] = apiKey.trim()
             prefs[Keys.providerLabel] = providerLabel.trim()
@@ -177,15 +177,15 @@ class SettingsRepository(private val context: Context) {
     }
 
     suspend fun saveReasoningEffort(effort: ReasoningEffort) {
-        context.lectorDataStore.edit { it[Keys.reasoningEffort] = effort.name }
+        context.settingsDataStore.edit { it[Keys.reasoningEffort] = effort.name }
     }
 
     suspend fun saveAiLanguage(language: AiLanguage) {
-        context.lectorDataStore.edit { it[Keys.aiLanguage] = language.tag }
+        context.settingsDataStore.edit { it[Keys.aiLanguage] = language.tag }
     }
 
     suspend fun setOnboardingCompleted(done: Boolean = true) {
-        context.lectorDataStore.edit { it[Keys.onboardingCompleted] = done }
+        context.settingsDataStore.edit { it[Keys.onboardingCompleted] = done }
     }
 
     suspend fun saveReaderSettings(
@@ -194,7 +194,7 @@ class SettingsRepository(private val context: Context) {
         lineHeight: Float,
         font: ReaderFont
     ) {
-        context.lectorDataStore.edit { prefs ->
+        context.settingsDataStore.edit { prefs ->
             prefs[Keys.readerTheme] = theme.name
             prefs[Keys.fontSize] = fontSize.coerceIn(MIN_FONT_SIZE, MAX_FONT_SIZE)
             prefs[Keys.lineHeight] = lineHeight.coerceIn(1.2f, 2.2f)
@@ -203,62 +203,62 @@ class SettingsRepository(private val context: Context) {
     }
 
     suspend fun saveTheme(theme: ReaderTheme) {
-        context.lectorDataStore.edit { it[Keys.readerTheme] = theme.name }
+        context.settingsDataStore.edit { it[Keys.readerTheme] = theme.name }
     }
 
     suspend fun saveFontSize(size: Int) {
-        context.lectorDataStore.edit { it[Keys.fontSize] = size.coerceIn(MIN_FONT_SIZE, MAX_FONT_SIZE) }
+        context.settingsDataStore.edit { it[Keys.fontSize] = size.coerceIn(MIN_FONT_SIZE, MAX_FONT_SIZE) }
     }
 
     suspend fun saveLineHeight(value: Float) {
-        context.lectorDataStore.edit { it[Keys.lineHeight] = value.coerceIn(1.2f, 2.2f) }
+        context.settingsDataStore.edit { it[Keys.lineHeight] = value.coerceIn(1.2f, 2.2f) }
     }
 
     suspend fun saveReaderFont(font: ReaderFont) {
-        context.lectorDataStore.edit { it[Keys.readerFont] = font.id }
+        context.settingsDataStore.edit { it[Keys.readerFont] = font.id }
     }
 
     suspend fun savePaneMode(mode: AiPaneMode) {
-        context.lectorDataStore.edit { it[Keys.aiPaneMode] = mode.name }
+        context.settingsDataStore.edit { it[Keys.aiPaneMode] = mode.name }
     }
 
     suspend fun savePaneFraction(fraction: Float) {
-        context.lectorDataStore.edit {
+        context.settingsDataStore.edit {
             it[Keys.aiPaneFraction] = fraction.coerceIn(0.0f, 0.40f)
         }
     }
 
     suspend fun saveContextSize(size: com.termino.data.model.ContextSize) {
-        context.lectorDataStore.edit { it[Keys.contextSize] = size.name }
+        context.settingsDataStore.edit { it[Keys.contextSize] = size.name }
     }
 
     suspend fun saveAppTheme(mode: com.termino.data.model.AppThemeMode) {
-        context.lectorDataStore.edit { it[Keys.appTheme] = mode.name }
+        context.settingsDataStore.edit { it[Keys.appTheme] = mode.name }
     }
 
     suspend fun saveTapZones(enabled: Boolean) {
-        context.lectorDataStore.edit { it[Keys.tapZones] = enabled }
+        context.settingsDataStore.edit { it[Keys.tapZones] = enabled }
     }
 
     suspend fun saveVolumeKeys(enabled: Boolean) {
-        context.lectorDataStore.edit { it[Keys.volumeKeys] = enabled }
+        context.settingsDataStore.edit { it[Keys.volumeKeys] = enabled }
     }
 
     suspend fun saveKeepScreenOn(enabled: Boolean) {
-        context.lectorDataStore.edit { it[Keys.keepScreenOn] = enabled }
+        context.settingsDataStore.edit { it[Keys.keepScreenOn] = enabled }
     }
 
     suspend fun savePdfOriginalPages(enabled: Boolean) {
-        context.lectorDataStore.edit { it[Keys.pdfOriginalPages] = enabled }
+        context.settingsDataStore.edit { it[Keys.pdfOriginalPages] = enabled }
     }
 
     suspend fun saveEyeCare(enabled: Boolean) {
-        context.lectorDataStore.edit { it[Keys.eyeCare] = enabled }
+        context.settingsDataStore.edit { it[Keys.eyeCare] = enabled }
     }
 
-    /** Olvida la conexión de IA (clave incluida) sin tocar lectura ni libros. */
+    /** Forgets the AI connection (key included) without touching reading settings or books. */
     suspend fun clearAiConnection() {
-        context.lectorDataStore.edit { prefs ->
+        context.settingsDataStore.edit { prefs ->
             prefs.remove(Keys.baseUrl)
             prefs.remove(Keys.apiKey)
             prefs.remove(Keys.providerLabel)

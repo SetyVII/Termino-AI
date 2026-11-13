@@ -1,6 +1,6 @@
 package com.termino.core.parser
 
-/** Utilidades de texto mínimas para no depender del módulo RAG. */
+/** Minimal text helpers, so this module does not depend on the RAG module. */
 internal object TextUtils {
     private val whitespace = Regex("\\s+")
 

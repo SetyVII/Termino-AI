@@ -67,7 +67,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    /** La splash se mantiene hasta leer los ajustes (evita un parpadeo biblioteca → onboarding). */
+    /** The splash stays until settings are read (avoids a library → onboarding flicker). */
     @Volatile
     private var settingsReady = false
 
@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Volumen abajo = página siguiente, arriba = anterior (si el lector lo pide). */
+    /** Volume down = next page, up = previous (when the reader asks for it). */
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         val turner = com.termino.core.reader.ReaderKeys.pageTurner
         if (turner != null) {
@@ -105,7 +105,7 @@ class MainActivity : ComponentActivity() {
                 else -> null
             }
             if (forward != null) {
-                // Se consume también el ACTION_UP para que no suene el volumen.
+                // ACTION_UP is consumed too so the volume sound does not play.
                 if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                     turner(forward)
                 }
@@ -143,7 +143,7 @@ class MainActivity : ComponentActivity() {
         uris.forEach { uri -> repository.enqueueImport(uri, null) }
         Toast.makeText(
             this,
-            if (uris.size == 1) "Importando libro…" else "Importando ${uris.size} libros…",
+            if (uris.size == 1) getString(R.string.importing_one) else getString(R.string.importing_many, uris.size),
             Toast.LENGTH_SHORT
         ).show()
     }
@@ -168,10 +168,10 @@ private fun LectorRoot(onSettingsLoaded: () -> Unit) {
     var screen by rememberSaveable { mutableStateOf(AppScreen.LIBRARY) }
     var bookId by rememberSaveable { mutableStateOf<String?>(null) }
     var settingsReturn by rememberSaveable { mutableStateOf(AppScreen.LIBRARY) }
-    // null = aún sin decidir (esperando a DataStore). Se decide una vez y solo
-    // se reabre si Ajustes pide "ver la bienvenida de nuevo": guardar la
-    // conexión marca el onboarding como completado, pero el paso final debe
-    // seguir visible hasta que el usuario pulse "Ir a la biblioteca".
+    // null = not decided yet (waiting for DataStore). Decided once and only
+    // reopened if Settings asks to "show the welcome again": saving the
+    // connection marks onboarding as completed, but the final step must stay
+    // visible until the user taps "Go to library".
     var showOnboarding by rememberSaveable { mutableStateOf<Boolean?>(null) }
 
     val loaded = settings
@@ -196,9 +196,9 @@ private fun LectorRoot(onSettingsLoaded: () -> Unit) {
         }
     }
 
-    // Gesto atrás predictivo (Android 14+): la pantalla actual se encoge y
-    // se desplaza siguiendo el dedo; si se suelta, se completa la navegación
-    // con la transición normal, y si se cancela vuelve con un muelle.
+    // Predictive back (Android 14+): the current screen shrinks and follows
+    // the finger; on release navigation completes with the normal
+    // transition, and on cancel it springs back.
     val scope = rememberCoroutineScope()
     val backProgress = remember { Animatable(0f) }
     var backFromLeft by remember { mutableStateOf(true) }
@@ -217,7 +217,7 @@ private fun LectorRoot(onSettingsLoaded: () -> Unit) {
         }
     }
     LaunchedEffect(target) {
-        // Tras la transición de salida, la pantalla que se "arrastró" ya no está.
+        // After the exit transition, the screen that was "dragged" is gone.
         delay(NAV_DURATION_MS + 80L)
         backProgress.snapTo(0f)
         backSource = null
@@ -228,7 +228,7 @@ private fun LectorRoot(onSettingsLoaded: () -> Unit) {
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        if (loaded == null) return@Surface // la splash sigue visible
+        if (loaded == null) return@Surface // the splash is still visible
         AnimatedContent(
             targetState = target,
             transitionSpec = { navTransition(initialState, targetState) },
@@ -327,8 +327,8 @@ private fun ReaderHost(
     BoxWithConstraints {
         val isNarrow = maxWidth < 800.dp
         LaunchedEffect(isNarrow) {
-            // En móvil el libro abre limpio: el asistente queda en la burbuja
-            // y se abre a pantalla completa solo cuando se pide.
+            // On phones the book opens clean: the assistant stays in the bubble
+            // and opens full screen only on request.
             readerViewModel.useCompactLayout(isNarrow)
         }
         TabletReaderScreen(
@@ -342,9 +342,8 @@ private fun ReaderHost(
 private const val NAV_DURATION_MS = 380
 
 /**
- * Transiciones Material: eje X compartido para entrar/salir de Ajustes,
- * "contenedor" (escala + fundido) al abrir/cerrar un libro y fundido a
- * través para el onboarding.
+ * Material transitions: shared X axis to enter/leave Settings, "container"
+ * (scale + fade) to open/close a book, and fade-through for onboarding.
  */
 private fun navTransition(from: AppScreen, to: AppScreen): ContentTransform {
     val emphasized = tween<Float>(NAV_DURATION_MS, easing = FastOutSlowInEasing)

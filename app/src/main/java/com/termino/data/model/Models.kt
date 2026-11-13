@@ -1,10 +1,10 @@
 package com.termino.data.model
 
-/** Modo claro/oscuro de toda la app (biblioteca, ajustes, onboarding). */
-enum class AppThemeMode(val label: String) {
-    SYSTEM("Sistema"),
-    LIGHT("Claro"),
-    DARK("Oscuro");
+/** Light/dark mode of the whole app (library, settings, onboarding). */
+enum class AppThemeMode {
+    SYSTEM,
+    LIGHT,
+    DARK;
 
     companion object {
         fun fromStorage(value: String?): AppThemeMode =
@@ -23,15 +23,15 @@ enum class AiPaneMode {
     }
 }
 
-enum class AiTab(val label: String) {
-    CHAT("Chat"),
-    NOTES("Notas")
+enum class AiTab(@androidx.annotation.StringRes val labelRes: Int) {
+    CHAT(com.termino.R.string.ai_tab_chat),
+    NOTES(com.termino.R.string.ai_tab_notes)
 }
 
 /**
- * Idioma de las respuestas de la IA como etiqueta BCP-47 ("es", "pt-BR"...)
- * o "auto". No hay lista cerrada: las opciones salen de los idiomas del
- * sistema y de [java.util.Locale], y el nombre se muestra en su propio idioma.
+ * Language of AI answers as a BCP-47 tag ("es", "pt-BR"...) or "auto". There
+ * is no fixed list: options come from the system languages and
+ * [java.util.Locale], and each name is shown in its own language.
  */
 @JvmInline
 value class AiLanguage(val tag: String) {
@@ -40,7 +40,7 @@ value class AiLanguage(val tag: String) {
     val locale: java.util.Locale?
         get() = if (isAuto) null else java.util.Locale.forLanguageTag(tag)
 
-    /** Nombre nativo ("Español", "Deutsch"), o null para Auto. */
+    /** Native name ("Español", "Deutsch"), or null for Auto. */
     val nativeName: String?
         get() = locale?.let { loc ->
             loc.getDisplayName(loc).replaceFirstChar { it.titlecase(loc) }
@@ -58,7 +58,7 @@ value class AiLanguage(val tag: String) {
         const val AUTO_TAG = "auto"
         val AUTO = AiLanguage(AUTO_TAG)
 
-        /** Migra los valores del antiguo enum (SPANISH, ENGLISH...) a etiquetas. */
+        /** Migrates values of the legacy enum (SPANISH, ENGLISH...) to tags. */
         private val legacy = mapOf(
             "AUTO" to AUTO_TAG, "SPANISH" to "es", "ENGLISH" to "en", "FRENCH" to "fr",
             "GERMAN" to "de", "PORTUGUESE" to "pt", "ITALIAN" to "it"
@@ -73,9 +73,9 @@ value class AiLanguage(val tag: String) {
         }
 
         /**
-         * Opciones: Auto, luego los idiomas configurados en el dispositivo
-         * (en su orden de preferencia) y después todos los idiomas que
-         * conoce la plataforma, ordenados por nombre nativo.
+         * Options: Auto, then the languages configured on the device (in
+         * their preference order) and then every language the platform
+         * knows, sorted by native name.
          */
         fun options(): List<AiLanguage> {
             val system = android.content.res.Resources.getSystem().configuration.locales
@@ -125,13 +125,11 @@ data class ImportJob(
 
 
 /**
- * Cuánto contexto del libro se envía en cada pregunta. Los modelos locales
- * (Ollama, LM Studio) y los gratuitos suelen tener ventanas pequeñas o ser
- * lentos con prompts largos; AUTO usa COMPACT para servidores locales y
- * BALANCED para el resto.
+ * How much book context is sent with each question. Local models (Ollama,
+ * LM Studio) and free tiers often have small windows or are slow with long
+ * prompts; AUTO uses COMPACT for local servers and BALANCED otherwise.
  */
 enum class ContextSize(
-    val label: String,
     val sources: Int,
     val passageChars: Int,
     val neighborSources: Int,
@@ -140,12 +138,12 @@ enum class ContextSize(
     val historyMessages: Int,
     val rewriteFollowUps: Boolean
 ) {
-    AUTO("Automático", 5, 1200, 1, 4500, 5, 8, true),
-    COMPACT("Compacto", 3, 800, 0, 2500, 3, 4, false),
-    BALANCED("Equilibrado", 5, 1200, 1, 4500, 5, 8, true),
-    WIDE("Amplio", 6, 1600, 2, 6500, 6, 10, true);
+    AUTO(5, 1200, 1, 4500, 5, 8, true),
+    COMPACT(3, 800, 0, 2500, 3, 4, false),
+    BALANCED(5, 1200, 1, 4500, 5, 8, true),
+    WIDE(6, 1600, 2, 6500, 6, 10, true);
 
-    /** Resuelve AUTO según el tipo de servidor. */
+    /** Resolves AUTO based on the server type. */
     fun resolve(localServer: Boolean): ContextSize =
         if (this == AUTO) (if (localServer) COMPACT else BALANCED) else this
 

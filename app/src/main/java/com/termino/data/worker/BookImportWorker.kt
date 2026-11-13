@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.termino.R
 import com.termino.TerminoApp
 import com.termino.data.repo.ImportSource
 import com.termino.data.repo.ImportStatusStore
@@ -31,10 +32,10 @@ class BookImportWorker(
     override suspend fun doWork(): Result {
         val jobId = inputData.getString(KEY_JOB_ID) ?: return Result.failure()
         val uriString = inputData.getString(KEY_URI)
-            ?: return failure(jobId, "No se recibió el archivo")
+            ?: return failure(jobId, applicationContext.getString(R.string.import_error_no_file))
         val displayName = inputData.getString(KEY_NAME)
         val isAsset = inputData.getBoolean(KEY_ASSET, false)
-        ImportStatusStore.progress(jobId, 0, "Preparando importación…")
+        ImportStatusStore.progress(jobId, 0, applicationContext.getString(R.string.import_preparing))
 
         return try {
             val app = applicationContext as TerminoApp
@@ -47,7 +48,10 @@ class BookImportWorker(
             val result = importer.importBook(source) { progress, message ->
                 ImportStatusStore.progress(jobId, progress, message)
             }
-            ImportStatusStore.success(jobId, result.bookId, result.warning)
+            ImportStatusStore.success(
+                jobId, result.bookId, result.warning,
+                applicationContext.getString(R.string.import_ready)
+            )
             Result.success(
                 workDataOf(
                     KEY_BOOK_ID to result.bookId,
@@ -60,7 +64,7 @@ class BookImportWorker(
             failure(
                 jobId,
                 error.message?.takeIf { it.isNotBlank() }
-                    ?: "No se pudo importar el libro"
+                    ?: applicationContext.getString(R.string.import_error_failed)
             )
         }
     }

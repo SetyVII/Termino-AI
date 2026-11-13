@@ -1,11 +1,13 @@
 package com.termino.ui.components
 
+import com.termino.R
 import com.termino.core.reader.HighlightColor
 import com.termino.core.reader.ReaderColors
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.scrollBy
@@ -122,11 +124,10 @@ fun AiAssistantPane(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                // Con adjustResize + edge-to-edge el IME se reporta como inset y la
-                // ventana NO se redimensiona: reservamos su altura aquí para que el
-                // campo de entrada y el botón de enviar queden siempre visibles,
-                // tanto en el panel acoplado como en el overlay a pantalla completa
-                // y en el panel flotante.
+                // With adjustResize + edge-to-edge the IME is reported as an inset
+                // and the window is NOT resized: reserve its height here so the
+                // input field and send button stay visible in the docked panel,
+                // the full-screen overlay and the floating panel.
                 .imePadding()
         ) {
             if (floating) {
@@ -216,7 +217,7 @@ private fun AssistantHeader(
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                text = "Asistente Término",
+                text = stringResource(R.string.assistant_title),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = colors.foreground,
@@ -224,7 +225,7 @@ private fun AssistantHeader(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = state.book?.title ?: "Tu lectura, aumentada",
+                text = state.book?.title ?: stringResource(R.string.assistant_subtitle_fallback),
                 fontSize = 10.5.sp,
                 lineHeight = 13.sp,
                 color = colors.muted,
@@ -239,7 +240,7 @@ private fun AssistantHeader(
             ) {
                 Icon(
                     Icons.Outlined.ViewSidebar,
-                    contentDescription = "Acoplar a la derecha",
+                    contentDescription = stringResource(R.string.assistant_dock_right),
                     tint = colors.foreground,
                     modifier = Modifier.size(20.dp)
                 )
@@ -251,7 +252,7 @@ private fun AssistantHeader(
             ) {
                 Icon(
                     Icons.Outlined.PictureInPictureAlt,
-                    contentDescription = "Flotar ventana",
+                    contentDescription = stringResource(R.string.assistant_float),
                     tint = colors.foreground,
                     modifier = Modifier.size(20.dp)
                 )
@@ -263,7 +264,7 @@ private fun AssistantHeader(
         ) {
             Icon(
                 Icons.Outlined.ExpandMore,
-                contentDescription = "Minimizar asistente",
+                contentDescription = stringResource(R.string.assistant_minimize),
                 tint = colors.foreground,
                 modifier = Modifier.size(20.dp)
             )
@@ -274,7 +275,7 @@ private fun AssistantHeader(
         ) {
             Icon(
                 Icons.Outlined.Settings,
-                contentDescription = "Ajustes de IA",
+                contentDescription = stringResource(R.string.assistant_settings),
                 tint = colors.foreground,
                 modifier = Modifier.size(20.dp)
             )
@@ -285,7 +286,7 @@ private fun AssistantHeader(
         ) {
             Icon(
                 Icons.Outlined.Close,
-                contentDescription = "Cerrar asistente",
+                contentDescription = stringResource(R.string.assistant_close),
                 tint = colors.foreground,
                 modifier = Modifier.size(20.dp)
             )
@@ -320,7 +321,7 @@ private fun AssistantTabs(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = tab.label,
+                    text = stringResource(tab.labelRes),
                     fontSize = 12.sp,
                     fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
                     color = if (active) colors.foreground else colors.muted
@@ -357,7 +358,7 @@ private fun ChatContent(
         ) {
             Text(
                 text = state.contextSummary.ifBlank {
-                    "Contexto: capítulo actual + búsqueda híbrida del libro"
+                    stringResource(R.string.assistant_context_default)
                 },
                 modifier = Modifier.weight(1f),
                 fontSize = 10.5.sp,
@@ -375,7 +376,7 @@ private fun ChatContent(
                         tint = colors.muted
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text("Limpiar", fontSize = 11.sp, color = colors.muted)
+                    Text(stringResource(R.string.assistant_clear), fontSize = 11.sp, color = colors.muted)
                 }
             }
         }
@@ -388,10 +389,10 @@ private fun ChatContent(
             if (itemCount > 0) {
                 withFrameNanos { }
                 if (state.isStreaming) {
-                    // Durante el streaming se ancla el final del último ítem para
-                    // que el texto nuevo (p. ej. tablas) nunca quede cortado a
-                    // mitad bajo la fila de contexto; scroll instantáneo, sin
-                    // animaciones interrumpidas que dejen ítems seccionados.
+                    // While streaming, the end of the last item is pinned so new
+                    // text (e.g. tables) is never cut in half under the context
+                    // row; scrolling is instant, with no interrupted animations
+                    // leaving items clipped.
                     val layoutInfo = listState.layoutInfo
                     val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()
                     if (lastVisible != null && lastVisible.index >= itemCount - 1) {
@@ -490,47 +491,42 @@ private fun EmptyChat(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            text = "Pregunta lo que quieras sobre el libro",
+            text = stringResource(R.string.assistant_empty_title),
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             color = colors.foreground
         )
         Text(
             text = if (bookTitle.isNullOrBlank()) {
-                "El asistente conoce tu página actual, tus subrayados y los pasajes más relevantes."
+                stringResource(R.string.assistant_empty_body)
             } else {
-                "Estás leyendo «$bookTitle». El asistente conoce tu página actual, tus subrayados y los pasajes más relevantes."
+                stringResource(R.string.assistant_empty_body_book, bookTitle)
             },
             fontSize = 12.sp,
             lineHeight = 18.sp,
             color = colors.muted
         )
         Spacer(Modifier.height(2.dp))
+        val summary = stringResource(R.string.assistant_suggest_summary)
+        val mainIdea = stringResource(R.string.assistant_suggest_main_idea)
+        val searchPrompt = stringResource(R.string.assistant_suggest_search_prompt)
         SuggestionCard(
-            text = "Resume lo que llevo leído y dime qué ideas no debería perder.",
+            text = summary,
             icon = Icons.Outlined.MenuBook,
             colors = colors,
-            onClick = { onAskSuggestion("Resume lo que llevo leído y dime qué ideas no debería perder.") }
+            onClick = { onAskSuggestion(summary) }
         )
         SuggestionCard(
-            text = "¿Cuál es la idea principal de este capítulo y cómo se conecta con el libro?",
+            text = mainIdea,
             icon = Icons.Outlined.Lightbulb,
             colors = colors,
-            onClick = {
-                onAskSuggestion(
-                    "¿Cuál es la idea principal de este capítulo y cómo se conecta con el libro?"
-                )
-            }
+            onClick = { onAskSuggestion(mainIdea) }
         )
         SuggestionCard(
-            text = "Busca en todo el libro dónde se explica mejor este concepto.",
+            text = stringResource(R.string.assistant_suggest_search),
             icon = Icons.Outlined.Search,
             colors = colors,
-            onClick = {
-                onAskSuggestion(
-                    "Busca en todo el libro dónde se explica mejor el concepto central de esta página."
-                )
-            }
+            onClick = { onAskSuggestion(searchPrompt) }
         )
     }
 }
@@ -701,7 +697,7 @@ private fun CopyResponseButton(
     ) {
         Icon(
             imageVector = if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy,
-            contentDescription = if (copied) "Respuesta copiada" else "Copiar respuesta",
+            contentDescription = if (copied) stringResource(R.string.assistant_copied) else stringResource(R.string.assistant_copy),
             tint = if (copied) colors.accent else colors.muted,
             modifier = Modifier.size(15.dp)
         )
@@ -732,7 +728,7 @@ private fun SourceChip(
             )
             Spacer(Modifier.width(5.dp))
             Text(
-                text = source.pageLabel.ifBlank { "Fuente" },
+                text = source.pageLabel.ifBlank { stringResource(R.string.assistant_source_fallback) },
                 fontSize = 10.sp,
                 color = colors.accent,
                 fontWeight = FontWeight.Medium
@@ -765,7 +761,7 @@ private fun StreamingBubble(
             }
             Spacer(Modifier.width(7.dp))
             Text(
-                text = "Término está pensando…",
+                text = stringResource(R.string.assistant_thinking),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = colors.muted
@@ -826,14 +822,14 @@ private fun ReasoningCard(colors: ReaderColors) {
                 Spacer(Modifier.width(10.dp))
                 Column {
                     Text(
-                        text = "Razonando…",
+                        text = stringResource(R.string.assistant_reasoning),
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = colors.foreground
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "Buscando en el libro y preparando el contexto…",
+                        text = stringResource(R.string.assistant_searching),
                         fontSize = 11.sp,
                         lineHeight = 15.sp,
                         color = colors.muted
@@ -867,7 +863,7 @@ private fun ChatErrorCard(
     ) {
         Column(Modifier.padding(12.dp)) {
             Text(
-                text = "No se pudo completar la respuesta",
+                text = stringResource(R.string.ai_response_failed),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onErrorContainer
@@ -881,7 +877,7 @@ private fun ChatErrorCard(
             )
             Spacer(Modifier.height(6.dp))
             TextButton(onClick = onOpenSettings) {
-                Text("Revisar ajustes de IA", fontSize = 11.sp)
+                Text(stringResource(R.string.assistant_review_settings), fontSize = 11.sp)
             }
         }
     }
@@ -907,7 +903,7 @@ private fun ChatInput(
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
                 Text(
-                    text = "Pregunta sobre el libro…",
+                    text = stringResource(R.string.assistant_input_placeholder),
                     fontSize = 13.sp,
                     color = colors.muted
                 )
@@ -927,7 +923,7 @@ private fun ChatInput(
                     IconButton(onClick = onStop) {
                         Icon(
                             Icons.Outlined.StopCircle,
-                            contentDescription = "Detener respuesta",
+                            contentDescription = stringResource(R.string.assistant_stop),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
@@ -938,7 +934,7 @@ private fun ChatInput(
                     ) {
                         Icon(
                             Icons.Outlined.Send,
-                            contentDescription = "Enviar pregunta",
+                            contentDescription = stringResource(R.string.assistant_send),
                             tint = if (value.isNotBlank()) colors.accent else colors.muted
                         )
                     }
@@ -958,7 +954,7 @@ private fun ChatInput(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Cita capítulos y páginas · Todo se procesa en tu dispositivo",
+            text = stringResource(R.string.assistant_footer),
             modifier = Modifier.padding(horizontal = 4.dp),
             fontSize = 9.5.sp,
             color = colors.muted.copy(alpha = 0.8f)
@@ -993,14 +989,14 @@ private fun NotesContent(
             )
             Spacer(Modifier.height(10.dp))
             Text(
-                text = "Aún no hay subrayados",
+                text = stringResource(R.string.assistant_notes_empty_title),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = colors.foreground
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Selecciona un pasaje y elige un color. Tus notas aparecerán aquí y en el contexto de la IA.",
+                text = stringResource(R.string.assistant_notes_empty_body),
                 fontSize = 11.5.sp,
                 lineHeight = 17.sp,
                 color = colors.muted
@@ -1024,7 +1020,7 @@ private fun NotesContent(
                     .firstOrNull { it.chapterIndex == chapterIndex }
                     ?.title
                     ?: highlights.firstOrNull()?.pageLabel
-                    ?: "Capítulo ${chapterIndex + 1}"
+                    ?: stringResource(R.string.chapter_fallback, chapterIndex + 1)
                 Text(
                     text = title,
                     modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
@@ -1098,7 +1094,7 @@ private fun HighlightCard(
             ) {
                 Icon(
                     Icons.Outlined.DeleteOutline,
-                    contentDescription = "Eliminar subrayado",
+                    contentDescription = stringResource(R.string.assistant_delete_highlight),
                     tint = colors.muted,
                     modifier = Modifier.size(16.dp)
                 )

@@ -452,10 +452,16 @@ private fun AnswersCard(
         )
         Spacer(Modifier.height(14.dp))
         SectionLabel(stringResource(R.string.settings_reasoning))
+        val reasoningLabels = listOf(
+            stringResource(R.string.reasoning_off),
+            stringResource(R.string.reasoning_low),
+            stringResource(R.string.reasoning_medium),
+            stringResource(R.string.reasoning_high)
+        )
         ChipRow(
             options = ReasoningEffort.entries,
             selected = settings.reasoningEffort,
-            label = { it.label },
+            label = { reasoningLabels[it.ordinal] },
             onSelect = onReasoning
         )
         Spacer(Modifier.height(6.dp))
@@ -481,7 +487,7 @@ private fun AnswersCard(
 
 @Composable
 private fun ReadingCard(settings: AppSettings, viewModel: SettingsViewModel) {
-    // Los sliders guardan al soltar: durante el arrastre solo cambia el estado local.
+    // Sliders save on release: while dragging only local state changes.
     var fontSize by remember(settings.fontSize) { mutableIntStateOf(settings.fontSize) }
     var lineHeight by remember(settings.lineHeight) { mutableFloatStateOf(settings.lineHeight) }
 
@@ -491,10 +497,11 @@ private fun ReadingCard(settings: AppSettings, viewModel: SettingsViewModel) {
         subtitle = stringResource(R.string.settings_reading_sub)
     ) {
         SectionLabel(stringResource(R.string.settings_theme))
+        val themeLabels = ReaderTheme.entries.associateWith { stringResource(it.labelRes) }
         ChipRow(
             options = ReaderTheme.entries,
             selected = settings.readerTheme,
-            label = { it.label },
+            label = { themeLabels.getValue(it) },
             leading = { theme ->
                 com.termino.ui.components.ThemeSwatch(theme = theme, size = 12.dp)
             },
@@ -656,8 +663,8 @@ private fun currentAppLanguageLabel(context: android.content.Context): String? {
 }
 
 /**
- * Idiomas de la app leídos del locales_config generado en compilación a partir
- * de las carpetas values-*: no hay lista escrita a mano.
+ * App languages read from the locales_config generated at build time from
+ * the values-* folders; there is no hand-written list.
  */
 @androidx.annotation.RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
@@ -962,7 +969,7 @@ private fun AdvancedCard(
     }
 }
 
-/** Chips con los modelos del proveedor; el icono de razonamiento sale de sus metadatos. */
+/** Chips with the provider models; the reasoning icon comes from their metadata. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ModelChips(
@@ -1075,9 +1082,9 @@ private fun AboutCard() {
     }
 }
 
-/** Componentes incluidos en el APK y su licencia (detalle en NOTICE.md). */
+/** Components bundled in the APK and their licenses (details in NOTICE.md). */
 private val OPEN_SOURCE_COMPONENTS = listOf(
-    "ReadAny (codedogQBY) — proyecto base" to "GPL-3.0",
+    "ReadAny (codedogQBY) — base project" to "GPL-3.0",
     "Kotlin · kotlinx.coroutines" to "Apache-2.0",
     "AndroidX · Jetpack Compose · Material 3" to "Apache-2.0",
     "Room · WorkManager · DataStore" to "Apache-2.0",

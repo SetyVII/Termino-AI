@@ -5,29 +5,27 @@ import com.termino.core.ai.ReasoningEffort
 
 object AiPrompts {
 
-    private const val REASONING_MARKER = "RAZONAMIENTO INTERNO"
+    private const val REASONING_MARKER = "INTERNAL REASONING"
 
     /**
-     * Directiva que se añade a los prompts del sistema cuando el esfuerzo de
-     * razonamiento es HIGH: el modelo debe razonar paso a paso de forma
-     * interna antes de responder, sin mostrar ese razonamiento, y debe
-     * verificar cada afirmación contra el contexto entregado.
+     * Directive appended to system prompts when reasoning effort is HIGH: the
+     * model must reason step by step internally before answering, without
+     * showing that reasoning, and check every claim against the given context.
      */
     fun highEffortReasoningDirective(): String = """
-        RAZONAMIENTO INTERNO (no lo muestres)
-        Antes de escribir la respuesta, razona paso a paso de forma interna:
-        descompón la pregunta, formula cada afirmación candidata y compruébala
-        una a una contra el CONTEXTO DEL LIBRO; descarta la que no esté
-        respaldada por él. No incluyas ese razonamiento en la respuesta:
-        entrega solo la conclusión final ya verificada. Si tras verificar,
-        alguna afirmación no cuadra con el contexto, dilo de forma explícita
-        en lugar de darla por buena.
+        INTERNAL REASONING (do not show it)
+        Before writing the answer, reason step by step internally: break the
+        question down, state each candidate claim and check it one by one
+        against the BOOK CONTEXT; discard any claim it does not support. Do not
+        include that reasoning in the answer: deliver only the verified final
+        conclusion. If, after checking, a claim does not fit the context, say
+        so explicitly instead of presenting it as correct.
     """.trimIndent()
 
     /**
-     * Añade la directiva de razonamiento solo cuando el esfuerzo es HIGH y el
-     * prompt aún no la contiene (la marca evita duplicarla si ya se añadió al
-     * construir el contexto).
+     * Appends the reasoning directive only when effort is HIGH and the prompt
+     * does not contain it yet (the marker avoids adding it twice when it was
+     * already included while building the context).
      */
     fun withHighEffortReasoning(systemPrompt: String, effort: ReasoningEffort): String {
         if (effort != ReasoningEffort.HIGH) return systemPrompt
@@ -40,28 +38,28 @@ object AiPrompts {
         reasoningEffort: ReasoningEffort
     ): String = withHighEffortReasoning(
         """
-        Eres un lexicógrafo y profesor de lectura bilingüe. Defines palabras y expresiones
-        exactamente como se usan en el contexto entregado, no como aparecen en un diccionario
-        aislado.
+        You are a bilingual lexicographer and reading teacher. You define words and
+        expressions exactly as they are used in the given context, not as they would
+        appear in an isolated dictionary entry.
 
-        IDIOMA DE RESPUESTA: $languageInstruction
-        Las etiquetas del formato y cualquier texto que añadas tú deben seguir ese mismo idioma.
+        RESPONSE LANGUAGE: $languageInstruction
+        The format labels and any text you add yourself must use that same language.
 
-        Formato obligatorio (Markdown, máximo 180 palabras):
-        **Significado en contexto:** una definición precisa y natural.
-        **Matiz:** connotación, registro o ambigüedad relevante.
-        **Ejemplo:** una frase breve nueva que demuestre el uso.
+        Required format (Markdown, at most 180 words):
+        **Meaning in context:** a precise, natural definition.
+        **Nuance:** relevant connotation, register or ambiguity.
+        **Example:** a short new sentence that shows the usage.
 
-        Si la selección es una frase, explica su sentido completo. No inventes datos,
-        etimologías ni acepciones que el contexto no respalde.
+        If the selection is a phrase, explain its full meaning. Do not invent facts,
+        etymologies or senses the context does not support.
 
-        FORMATO
-        - Usa negrita solo para las etiquetas anteriores o para términos clave de como
-          máximo 4-6 palabras; nunca para frases completas o conclusiones enteras.
-        - No añadas encabezados, tablas, citas en bloque ni secciones extra a este
-          formato: el panel de lectura es estrecho.
-        - No repitas la misma cita textual más de una vez en la misma respuesta; si
-          necesitas referirla de nuevo, menciona solo la ubicación.
+        FORMATTING
+        - Use bold only for the labels above or for key terms of at most 4-6 words;
+          never for whole sentences or conclusions.
+        - Do not add headings, tables, block quotes or extra sections to this format:
+          the reading panel is narrow.
+        - Do not repeat the same verbatim quote more than once in an answer; if you
+          need to refer to it again, mention only its location.
         """.trimIndent(),
         reasoningEffort
     )
@@ -71,63 +69,64 @@ object AiPrompts {
         reasoningEffort: ReasoningEffort
     ): String = withHighEffortReasoning(
         """
-        Eres un explicador experto en literatura, ciencia y textos técnicos. Tu trabajo es
-        desglosar un pasaje para un lector inteligente que quiere entenderlo de verdad.
-        Responde en Markdown claro y sin relleno.
+        You are an expert explainer of literature, science and technical texts. Your job
+        is to break a passage down for an intelligent reader who wants to truly
+        understand it. Answer in clear Markdown, without filler.
 
-        IDIOMA DE RESPUESTA: $languageInstruction
-        Las etiquetas de sección, las cabeceras de tabla y cualquier texto que añadas tú
-        deben seguir ese mismo idioma.
+        RESPONSE LANGUAGE: $languageInstruction
+        Section labels, table headers and any text you add yourself must use that
+        same language.
 
-        Estructura:
-        **Idea central:** qué dice el pasaje en una o dos frases.
-        **Cómo funciona:** desglose de la lógica, imágenes, términos o argumentos.
-        **Términos clave:** solo los que necesiten aclaración.
-        **Por qué importa:** conexión con el capítulo y con el resto del libro.
+        Structure:
+        **Core idea:** what the passage says, in one or two sentences.
+        **How it works:** a breakdown of the logic, imagery, terms or arguments.
+        **Key terms:** only the ones that need clarification.
+        **Why it matters:** its connection to the chapter and the rest of the book.
 
-        CITAS Y CONTEXTO
-        - Cuando afirmes algo basado en el libro, cita la ubicación exacta (capítulo y
-          página) entre corchetes, por ejemplo [Capítulo 3 · página 2] o [Página 47].
-        - No repitas la misma cita textual más de una vez en la misma respuesta; si
-          necesitas referirla de nuevo, menciona la ubicación sin repetir el texto
-          completo.
-        - Si el contexto entregado no alcanza para responder con seguridad, dilo
-          explícitamente, distingue lo que sí se puede inferir y no rellenes huecos.
+        CITATIONS AND CONTEXT
+        - When you state something based on the book, cite the exact location
+          (chapter and page) in square brackets, using the labels exactly as they
+          appear in the context, e.g. [Chapter 3 · page 2] or [Page 47].
+        - Do not repeat the same verbatim quote more than once in an answer; if you
+          need to refer to it again, mention the location without repeating the
+          full text.
+        - If the given context is not enough to answer confidently, say so
+          explicitly, separate what can be inferred and do not fill gaps.
 
-        FORMATO
-        - Usa negrita solo para las etiquetas de la estructura o para términos clave de
-          como máximo 4-6 palabras; nunca para frases completas o conclusiones enteras.
-        - Evita mezclar encabezados, viñetas, citas en bloque y líneas horizontales en
-          respuestas cortas: usa como máximo dos niveles de formato por respuesta y
-          prefiere párrafos cortos y listas simples, porque el panel es estrecho.
-        - Si incluyes una tabla, usa Markdown con cabeceras en negrita, alineación
-          simple y sin columnas vacías.
+        FORMATTING
+        - Use bold only for the structure labels or for key terms of at most 4-6
+          words; never for whole sentences or conclusions.
+        - Avoid mixing headings, bullets, block quotes and horizontal rules in short
+          answers: use at most two levels of formatting per answer and prefer short
+          paragraphs and simple lists, because the panel is narrow.
+        - If you include a table, use Markdown with bold headers, simple alignment
+          and no empty columns.
         """.trimIndent(),
         reasoningEffort
     )
 
     fun quickDefinitionUser(word: String, sentence: String, chapterContext: String): String = """
-        Palabra o expresión seleccionada:
+        Selected word or expression:
         "$word"
 
-        Frase exacta donde aparece:
+        Exact sentence where it appears:
         "$sentence"
 
-        Contexto del capítulo (puede estar recortado):
+        Chapter context (may be truncated):
         $chapterContext
 
-        Define la selección según este uso concreto.
+        Define the selection according to this specific usage.
     """.trimIndent()
 
     fun explainUser(passage: String, chapterContext: String, bookTitle: String): String = """
-        Libro: $bookTitle
+        Book: $bookTitle
 
-        Pasaje seleccionado:
+        Selected passage:
         "$passage"
 
-        Contexto del capítulo:
+        Chapter context:
         $chapterContext
 
-        Explica el pasaje con la estructura solicitada.
+        Explain the passage using the requested structure.
     """.trimIndent()
 }

@@ -21,6 +21,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.termino.TerminoApp
 import com.termino.ai.AiRepository
+import com.termino.R
 import com.termino.ai.ReadingContextBuilder
 import com.termino.ai.SourceRef
 import com.termino.data.db.ChapterDao
@@ -83,7 +84,7 @@ class ReaderViewModel(
     private var pendingAnchorLabel: String? = null
     private var pendingAnchorAllowSheet: Boolean = true
     private var pendingTargetScrollY: Int? = null
-    /** Texto a localizar tras cargar un capítulo (búsqueda o marcador). */
+    /** Text to locate after a chapter loads (search hit or bookmark). */
     private var pendingFindText: String? = null
     private var searchJob: Job? = null
 
@@ -128,14 +129,14 @@ class ReaderViewModel(
     private var quickJob: Job? = null
     private var progressJob: Job? = null
     private var suppressPartialSave = false
-    // Momento en que el usuario cerró la última hoja de referencias. Sirve para
-    // no abrir una hoja nueva mientras el ModalBottomSheet anterior aún está
-    // animando su cierre: si el toque llega antes de que la animación termine,
-    // la hoja nueva se encola y se muestra al terminar.
+    // When the user last closed a references sheet. Used to avoid opening a
+    // new sheet while the previous ModalBottomSheet is still animating out:
+    // if the tap arrives before the animation ends, the new sheet is queued
+    // and shown afterwards.
     private var lastReferenceDismissAt = 0L
     private var pendingReferenceOpen: Job? = null
 
-    /** Modo oscuro efectivo de la app; lo informa la pantalla para resolver AUTO. */
+    /** Effective app dark mode, reported by the screen to resolve AUTO. */
     private var appDark = false
 
     init {
@@ -236,7 +237,7 @@ class ReaderViewModel(
             val book = bookDeferred.await()
             if (book == null) {
                 _ui.update {
-                    it.copy(loading = false, error = "No se encontró el libro en la biblioteca")
+                    it.copy(loading = false, error = appContext.getString(R.string.reader_error_book_missing))
                 }
                 return@launch
             }
@@ -342,10 +343,10 @@ class ReaderViewModel(
         pendingAnchorLabel = anchorLabel
         pendingAnchorAllowSheet = allowSheet
         pendingTargetScrollY = targetScrollY
-        // El id se asigna fuera de la corrutina: dos llamadas rápidas a
-        // loadChapter siempre producen ids crecientes y el contenido más
-        // reciente es el que gana el render, sin depender del orden en que
-        // cada corrutina llega a publicar en _content.
+        // The id is assigned outside the coroutine: two quick loadChapter
+        // calls always produce increasing ids and the newest content wins the
+        // render, regardless of the order in which each coroutine publishes
+        // to _content.
         requestId++
         val request = requestId
         viewModelScope.launch {
@@ -355,7 +356,7 @@ class ReaderViewModel(
             val highlights = highlightsDeferred.await()
             if (chapter == null) {
                 _ui.update {
-                    it.copy(loading = false, error = "No se pudo cargar el capítulo")
+                    it.copy(loading = false, error = appContext.getString(R.string.reader_error_chapter_load))
                 }
                 return@launch
             }
@@ -569,7 +570,7 @@ class ReaderViewModel(
                 }
             }.onFailure { error ->
                 _ui.update {
-                    it.copy(toast = error.message ?: "No se pudo guardar el subrayado")
+                    it.copy(toast = error.message ?: appContext.getString(R.string.reader_highlight_save_failed))
                 }
             }
         }
@@ -594,15 +595,11 @@ class ReaderViewModel(
         }
     }
 
-    override fun onDebug(message: String) {
-        android.util.Log.d("LectorReader", message)
-    }
-
     override fun onHighlightApplied(id: String, success: Boolean) {
         if (!success) {
             _ui.update {
                 it.copy(
-                    toast = "El subrayado se guardó, pero no se pudo dibujar en esta página"
+                    toast = appContext.getString(R.string.reader_highlight_draw_failed)
                 )
             }
         }
@@ -610,20 +607,19 @@ class ReaderViewModel(
 
     override fun onHighlightRemoved(id: String, success: Boolean) {
         if (!success) {
-            _ui.update { it.copy(toast = "No se pudo quitar el subrayado de la página") }
+            _ui.update { it.copy(toast = appContext.getString(R.string.reader_highlight_remove_failed)) }
         }
     }
 
     override fun onReferenceTapped(references: List<ReaderReference>) {
         if (references.isEmpty()) return
-        android.util.Log.d("LectorReader", "onReferenceTapped ${references.map { it.referenceKey }}")
-        // Cancela una apertura aplazada anterior para que un toque viejo no
-        // pise la referencia más reciente.
+        // Cancel a previously deferred opening so an old tap does not
+        // override the newest reference.
         pendingReferenceOpen?.cancel()
         val elapsed = System.currentTimeMillis() - lastReferenceDismissAt
         if (elapsed < REFERENCE_SHEET_COOLDOWN_MS) {
-            // El sheet anterior puede seguir animando su cierre: retrasar la
-            // apertura evita que ModalBottomSheet ignore la hoja nueva.
+            // The previous sheet may still be animating out: delaying the
+            // opening keeps ModalBottomSheet from ignoring the new one.
             pendingReferenceOpen = viewModelScope.launch {
                 delay(REFERENCE_SHEET_COOLDOWN_MS - elapsed)
                 _ui.update { it.copy(referencePreview = references) }
@@ -636,7 +632,7 @@ class ReaderViewModel(
     override fun onInternalChapterTapped(chapterIndex: Int, anchor: String?, label: String) {
         val state = _ui.value
         if (chapterIndex !in 0 until state.chapters.size) {
-            _ui.update { it.copy(toast = "No se encontró el capítulo destino") }
+            _ui.update { it.copy(toast = appContext.getString(R.string.reader_target_chapter_missing)) }
             return
         }
         val cleanAnchor = anchor?.trim().orEmpty()
@@ -655,17 +651,17 @@ class ReaderViewModel(
                     onReferenceTapped(listOf(fallbackRef))
                     return
                 }
-                _ui.update { it.copy(toast = "No se encontró la referencia $cleanAnchor") }
+                _ui.update { it.copy(toast = appContext.getString(R.string.reader_reference_missing, cleanAnchor)) }
                 return
             }
         }
 
-        // Navegación real a sección, tabla, figura o capítulo
+        // Actual navigation to a section, table, figure or chapter
         pushNavPosition()
         if (chapterIndex == state.currentChapterIndex) {
             val found = controller.goToInternalAnchor(cleanAnchor, label)
             if (!found) {
-                _ui.update { it.copy(toast = "No se encontró la sección en este capítulo") }
+                _ui.update { it.copy(toast = appContext.getString(R.string.reader_section_missing)) }
             }
             return
         }
@@ -731,7 +727,7 @@ class ReaderViewModel(
         if (state.currentChapterIndex < state.chapters.lastIndex) {
             loadChapter(state.currentChapterIndex + 1, 0)
         } else {
-            _ui.update { it.copy(toast = "Has llegado al final del libro") }
+            _ui.update { it.copy(toast = appContext.getString(R.string.reader_end_of_book)) }
         }
     }
 
@@ -740,7 +736,7 @@ class ReaderViewModel(
         if (state.currentChapterIndex > 0) {
             loadChapter(state.currentChapterIndex - 1, Int.MAX_VALUE)
         } else {
-            _ui.update { it.copy(toast = "Estás al inicio del libro") }
+            _ui.update { it.copy(toast = appContext.getString(R.string.reader_start_of_book)) }
         }
     }
 
@@ -750,7 +746,7 @@ class ReaderViewModel(
 
     override fun tapZonesEnabled(): Boolean = _ui.value.tapZones
 
-    /** Como en Play Libros: al pasar página con un gesto la interfaz se retira. */
+    /** Turning the page with a gesture hides the UI. */
     override fun onUserPageTurn() {
         if (_ui.value.showTopBar && _ui.value.search == null && !_ui.value.showToc) {
             _ui.update { it.copy(showTopBar = false) }
@@ -766,9 +762,9 @@ class ReaderViewModel(
             .lowercase()
 
     /**
-     * Sección (del índice jerárquico) en la que cae cada fragmento recuperado:
-     * el último título del capítulo que aparece antes del fragmento. Permite
-     * citar "Sección 3.1.2 …" en vez de solo el capítulo.
+     * Section (from the hierarchical TOC) each retrieved chunk falls in: the
+     * last chapter heading that appears before the chunk. Lets citations say
+     * "Section 3.1.2 …" instead of just the chapter.
      */
     private suspend fun sectionTitles(rag: RagSearchResult): Map<Long, String> {
         val toc = _ui.value.tocItems
@@ -816,7 +812,7 @@ class ReaderViewModel(
             return
         }
         searchJob = viewModelScope.launch {
-            delay(250) // debounce mientras se escribe
+            delay(250) // debounce while typing
             _ui.update { it.copy(search = it.search?.copy(searching = true)) }
             val (hits, truncated) = withContext(Dispatchers.Default) {
                 val chapters = withContext(Dispatchers.IO) { chapterDao.search(bookId, trimmed) }
@@ -842,7 +838,7 @@ class ReaderViewModel(
                 val to = (index + query.length + 90).coerceAtMost(text.length)
                 val rawSnippet = text.substring(from, to)
                 val snippet = rawSnippet.replace(Regex("\\s+"), " ")
-                // Recalcula la posición tras colapsar espacios.
+                // Recompute the position after collapsing whitespace.
                 val prefix = text.substring(from, index).replace(Regex("\\s+"), " ")
                 val start = prefix.length
                 hits += SearchHit(
@@ -908,7 +904,7 @@ class ReaderViewModel(
     fun openBookmark(bookmark: com.termino.data.db.BookmarkEntity) {
         pushNavPosition()
         _ui.update { it.copy(showToc = false) }
-        // El extracto localiza el punto exacto aunque haya cambiado la tipografía.
+        // The excerpt finds the exact spot even if the typography changed.
         pendingFindText = bookmark.excerpt.take(48).takeIf { it.length >= 12 }
         loadChapter(bookmark.chapterIndex, bookmark.pageIndex)
     }
@@ -919,19 +915,19 @@ class ReaderViewModel(
         viewModelScope.launch { settingsRepository.savePdfOriginalPages(enabled) }
     }
 
-    /** Página del visor PDF asentada: carga su texto para la IA sin apilar navegación. */
+    /** PDF viewer page settled: loads its text for the AI without stacking navigation. */
     fun onPdfPageSettled(page: Int) {
         val last = (_ui.value.chapters.size - 1).coerceAtLeast(0)
         val safe = page.coerceIn(0, last)
         if (safe == _ui.value.currentChapterIndex) return
         loadChapter(safe, 0)
         viewModelScope.launch {
-            delay(400) // loadChapter publica el estado de forma asíncrona
+            delay(400) // loadChapter publishes its state asynchronously
             saveProgressDebounced()
         }
     }
 
-    /** Móvil: el libro abre sin el asistente encima (no se guarda como preferencia). */
+    /** Phone: the book opens without the assistant on top (not saved as a preference). */
     private var compactLayout = false
 
     fun useCompactLayout(compact: Boolean) {
@@ -947,7 +943,7 @@ class ReaderViewModel(
 
     override fun onLinkTapped(url: String) {
         if (url.startsWith("#") || (!url.startsWith("http") && url.contains("#"))) {
-            _ui.update { it.copy(toast = "No se encontró la sección en este capítulo") }
+            _ui.update { it.copy(toast = appContext.getString(R.string.reader_section_missing)) }
             return
         }
         _ui.update { it.copy(externalLink = url) }
@@ -1020,7 +1016,7 @@ class ReaderViewModel(
         viewModelScope.launch { settingsRepository.saveTheme(theme) }
     }
 
-    /** La app cambió entre claro y oscuro: el tema AUTO del lector la sigue. */
+    /** The app switched between light and dark: the reader AUTO theme follows it. */
     fun setAppDark(dark: Boolean) {
         if (appDark == dark) return
         appDark = dark
@@ -1045,10 +1041,10 @@ class ReaderViewModel(
             fontRepository.import(uri).fold(
                 onSuccess = { font ->
                     setFont(font)
-                    _ui.update { it.copy(toast = "Fuente «${font.label}» añadida") }
+                    _ui.update { it.copy(toast = appContext.getString(R.string.reader_font_added, font.label)) }
                 },
                 onFailure = { error ->
-                    _ui.update { it.copy(toast = error.message ?: "No se pudo importar la fuente") }
+                    _ui.update { it.copy(toast = error.message ?: appContext.getString(R.string.reader_font_import_failed)) }
                 }
             )
         }
@@ -1134,7 +1130,7 @@ class ReaderViewModel(
         if (!canUseAi(settings)) {
             _ui.update {
                 it.copy(
-                    chatError = "Configura tu API Key y el modelo en Ajustes para usar el asistente."
+                    chatError = appContext.getString(R.string.ai_not_configured_chat)
                 )
             }
             return
@@ -1164,8 +1160,8 @@ class ReaderViewModel(
                     .let(chatRepository::toAiMessages)
                 chatRepository.addUserMessage(bookId, userContent)
                 val baseQuery = if (quotedText != null) "$trimmed $quotedText" else trimmed
-                // Preguntas de seguimiento ("¿y eso por qué?") se reescriben con
-                // el modelo rápido para buscar bien; el chat recibe la original.
+                // Follow-up questions ("and why is that?") are rewritten with the
+                // fast model for retrieval; the chat model receives the original.
                 val query = if (budget.rewriteFollowUps && history.isNotEmpty() && quotedText == null) {
                     aiRepository.rewriteQuery(settings, history, trimmed)
                         ?.let { rewritten -> "$rewritten $trimmed" }
@@ -1181,7 +1177,6 @@ class ReaderViewModel(
                         currentChapterIndex = chapter.chapterIndex,
                         passageChars = budget.passageChars,
                         neighborSources = budget.neighborSources,
-                        // Antes no se pasaba: el ajuste por la página visible no actuaba.
                         currentVisibleText = _ui.value.visibleText.ifBlank { chapter.plainText.take(4000) }
                     )
                 }.getOrDefault(RagSearchResult())
@@ -1248,7 +1243,7 @@ class ReaderViewModel(
                 throw cancelled
             } catch (error: Exception) {
                 failure = error.message?.takeIf { it.isNotBlank() }
-                    ?: "No se pudo completar la respuesta"
+                    ?: appContext.getString(R.string.ai_response_failed)
                 if (full.isNotBlank()) {
                     runCatching {
                         chatRepository.addAssistantMessage(
@@ -1283,7 +1278,7 @@ class ReaderViewModel(
         }
         _ui.update { it.copy(selection = null, quickAction = null, aiTab = AiTab.CHAT) }
         sendMessage(
-            text = "¿Qué significa este pasaje y cómo se conecta con lo que estoy leyendo?",
+            text = appContext.getString(R.string.ai_ask_about_passage),
             quotedText = text
         )
     }
@@ -1299,9 +1294,9 @@ class ReaderViewModel(
                     quickAction = QuickActionUi(
                         type = type,
                         title = selection.text.take(80),
-                        subtitle = "Configura tu API Key en Ajustes",
+                        subtitle = appContext.getString(R.string.ai_not_configured_subtitle),
                         loading = false,
-                        error = "El asistente aún no está configurado."
+                        error = appContext.getString(R.string.ai_not_configured)
                     )
                 )
             }
@@ -1319,12 +1314,12 @@ class ReaderViewModel(
         val title = if (type == QuickActionType.DICTIONARY) {
             selection.text.take(80)
         } else {
-            "Explicar pasaje"
+            appContext.getString(R.string.ai_explain_title)
         }
         val subtitle = if (type == QuickActionType.DICTIONARY) {
-            "Definición exacta según el contexto"
+            appContext.getString(R.string.ai_define_subtitle)
         } else {
-            "Desglose del pasaje y su relación con el capítulo"
+            appContext.getString(R.string.ai_explain_subtitle)
         }
         _ui.update {
             it.copy(
@@ -1398,7 +1393,7 @@ class ReaderViewModel(
                     it.copy(
                         quickAction = it.quickAction?.copy(
                             loading = false,
-                            error = error.message ?: "No se pudo consultar la IA"
+                            error = error.message ?: appContext.getString(R.string.ai_query_failed)
                         )
                     )
                 }
@@ -1419,7 +1414,7 @@ class ReaderViewModel(
         }
         _ui.update { it.copy(selection = null, aiTab = AiTab.CHAT) }
         sendMessage(
-            text = "¿Qué significa este pasaje y cómo se conecta con lo que estoy leyendo?",
+            text = appContext.getString(R.string.ai_ask_about_passage),
             quotedText = text
         )
     }

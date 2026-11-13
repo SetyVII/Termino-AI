@@ -6,9 +6,9 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 /**
- * Base de datos propia del índice RAG (fragmentos, FTS4 y estadísticas de
- * términos). Vive separada de la base de datos de la app para que el módulo
- * se pueda reutilizar sin acoplarse a su esquema.
+ * Dedicated database for the RAG index (chunks, FTS4 and term statistics).
+ * It lives apart from the app database so the module can be reused without
+ * coupling to the app schema.
  */
 @Database(
     entities = [RagChunkEntity::class, RagFtsEntity::class, RagTermStatEntity::class],

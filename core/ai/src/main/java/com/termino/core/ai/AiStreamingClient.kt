@@ -26,10 +26,10 @@ class AiStreamingClient(
     private val client: OkHttpClient = defaultClient()
 ) {
     /**
-     * Cliente derivado para llamadas cortas de metadatos (listado de modelos):
-     * hereda interceptores y configuración del cliente principal pero recorta
-     * todos los timeouts a 15 s, suficiente para un GET /models y sin dejar
-     * Ajustes colgado si el proveedor no responde.
+     * Derived client for short metadata calls (model listing): it inherits
+     * the main client's interceptors and configuration but caps every timeout
+     * at 15 s, enough for a GET /models without leaving Settings hanging if
+     * the provider does not respond.
      */
     private val modelsClient: OkHttpClient by lazy {
         client.newBuilder()
@@ -55,7 +55,7 @@ class AiStreamingClient(
 
         fun endpointFor(baseUrl: String): String {
             val trimmed = baseUrl.trim().trimEnd('/')
-            if (trimmed.isBlank()) throw AiException("La URL base del proveedor está vacía")
+            if (trimmed.isBlank()) throw AiException("The provider base URL is empty")
             return if (trimmed.endsWith("/chat/completions")) {
                 trimmed
             } else {
@@ -64,14 +64,14 @@ class AiStreamingClient(
         }
 
         /**
-         * URL del endpoint de listado de modelos, compatible con OpenAI:
-         * GET {base}/models. Acepta la misma variedad de URLs base que
-         * [endpointFor]: si el usuario pegó la ruta completa de chat, se
-         * sustituye por /models en vez de concatenar detrás.
+         * OpenAI-compatible model listing endpoint: GET {base}/models.
+         * Accepts the same variety of base URLs as [endpointFor]: if the user
+         * pasted the full chat path, it is replaced with /models instead of
+         * being appended to.
          */
         fun modelsEndpointFor(baseUrl: String): String {
             val trimmed = baseUrl.trim().trimEnd('/')
-            if (trimmed.isBlank()) throw AiException("La URL base del proveedor está vacía")
+            if (trimmed.isBlank()) throw AiException("The provider base URL is empty")
             val base = if (trimmed.endsWith("/chat/completions")) {
                 trimmed.removeSuffix("/chat/completions")
             } else {
@@ -83,9 +83,9 @@ class AiStreamingClient(
 
     fun stream(baseUrl: String, apiKey: String, request: AiRequest): Flow<AiStreamEvent> =
         callbackFlow {
-            // Forma de la petición: se parte de lo aprendido para este
-            // proveedor+modelo y se ajusta según lo que el propio proveedor
-            // rechace (no hay listas de modelos escritas a mano).
+            // Request shape: start from what was learned for this
+            // provider+model and adjust to whatever the provider itself
+            // rejects (there are no hand-written model lists).
             var shape = learnedShape(baseUrl, request)
             var call = client.newCall(buildHttpRequest(baseUrl, apiKey, request, shape))
             val job = launch(Dispatchers.IO) {
@@ -99,12 +99,12 @@ class AiStreamingClient(
                 }
                 try {
                     var response = call.execute()
-                    // Auto-ajuste resiliente: si el proveedor responde 400 por
-                    // un parámetro que el modelo no admite (reasoning_effort,
-                    // max_tokens → max_completion_tokens, temperature fija),
-                    // se reconstruye la petición sin él y se reintenta sin
-                    // emitir el error intermedio. Lo aprendido se recuerda
-                    // para las siguientes peticiones al mismo modelo.
+                    // Resilient self-adjustment: if the provider answers 400
+                    // for a parameter the model does not accept (reasoning_effort,
+                    // max_tokens → max_completion_tokens, fixed temperature),
+                    // the request is rebuilt without it and retried without
+                    // emitting the intermediate error. What is learned is
+                    // remembered for later requests to the same model.
                     var attempts = 0
                     while (response.code == 400 && attempts < MAX_SHAPE_RETRIES) {
                         val errorBody = response.body?.string().orEmpty().take(4000)
@@ -112,7 +112,7 @@ class AiStreamingClient(
                         val adjusted = adjustShape(shape, errorBody)
                         if (adjusted == null) {
                             val message = parseErrorMessage(errorBody)
-                                ?: "El proveedor respondió HTTP 400"
+                                ?: "The provider responded HTTP 400"
                             trySend(AiStreamEvent.Failed(message))
                             close()
                             return@launch
@@ -127,13 +127,13 @@ class AiStreamingClient(
                         if (!current.isSuccessful) {
                             val errorBody = current.body?.string().orEmpty().take(4000)
                             val message = parseErrorMessage(errorBody)
-                                ?: "El proveedor respondió HTTP ${current.code}"
+                                ?: "The provider responded HTTP ${current.code}"
                             trySend(AiStreamEvent.Failed(message))
                             close()
                             return@launch
                         }
                         val source = current.body?.source()
-                            ?: throw IOException("La respuesta del proveedor no tiene cuerpo")
+                            ?: throw IOException("The provider response has no body")
                         while (!source.exhausted()) {
                             val line = source.readUtf8Line() ?: break
                             if (line.startsWith("data:")) {
@@ -167,7 +167,7 @@ class AiStreamingClient(
                         trySend(
                             AiStreamEvent.Failed(
                                 error.message?.takeIf { it.isNotBlank() }
-                                    ?: "No se pudo conectar con el proveedor de IA"
+                                    ?: "Could not connect to the AI provider"
                             )
                         )
                     }
@@ -191,26 +191,26 @@ class AiStreamingClient(
             }
         }
         failure?.let { throw AiException(it) }
-        if (builder.isEmpty()) throw AiException("El proveedor devolvió una respuesta vacía")
+        if (builder.isEmpty()) throw AiException("The provider returned an empty response")
         return builder.toString()
     }
 
     /**
-     * Ids de los modelos del proveedor (atajo de [fetchModels]). Nunca lanza.
+     * Model ids offered by the provider (shortcut for [fetchModels]). Never throws.
      */
     suspend fun listModels(baseUrl: String, apiKey: String): List<String> =
         fetchModels(baseUrl, apiKey).models.map { it.id }
 
     /**
-     * GET {base}/models con los metadatos que exponga el proveedor (contexto,
-     * soporte de razonamiento, si es un modelo de chat). Devuelve también el
-     * código HTTP para distinguir clave inválida (401/403) de endpoint sin
-     * listado (404) o red caída (code == null). Nunca lanza.
+     * GET {base}/models with whatever metadata the provider exposes (context,
+     * reasoning support, whether it is a chat model). Also returns the HTTP
+     * code to tell an invalid key (401/403) from an endpoint without a
+     * listing (404) or a network failure (code == null). Never throws.
      */
     suspend fun fetchModels(baseUrl: String, apiKey: String): ModelsResponse =
         withContext(Dispatchers.IO) {
             val trimmedBase = baseUrl.trim()
-            if (trimmedBase.isBlank()) return@withContext ModelsResponse(null, emptyList(), "URL vacía")
+            if (trimmedBase.isBlank()) return@withContext ModelsResponse(null, emptyList(), "Empty URL")
             val request = runCatching {
                 Request.Builder()
                     .url(modelsEndpointFor(trimmedBase))
@@ -237,9 +237,9 @@ class AiStreamingClient(
         }
 
     /**
-     * Petición mínima no-streaming para verificar que la clave y el modelo
-     * funcionan de verdad. Aplica el mismo auto-ajuste de parámetros que el
-     * streaming y devuelve el código HTTP final.
+     * Minimal non-streaming request to verify that the key and the model
+     * really work. Applies the same parameter self-adjustment as streaming
+     * and returns the final HTTP code.
      */
     suspend fun ping(baseUrl: String, apiKey: String, model: String): PingResult =
         withContext(Dispatchers.IO) {
@@ -274,7 +274,7 @@ class AiStreamingClient(
                     return@withContext PingResult(null, error.message)
                 }
             }
-            PingResult(400, "El proveedor rechazó la petición")
+            PingResult(400, "The provider rejected the request")
         }
 
     private fun parseModels(body: String): List<ProviderModel> {
@@ -337,8 +337,8 @@ class AiStreamingClient(
         val key = apiKey.trim()
         if (key.isBlank()) return this
         header("Authorization", "Bearer $key")
-        // Anthropic acepta Bearer en su capa compatible con OpenAI, pero su
-        // listado de modelos usa x-api-key + versión.
+        // Anthropic accepts Bearer on its OpenAI-compatible layer, but its
+        // model listing uses x-api-key + version.
         if (baseUrl.contains("anthropic.com")) {
             header("x-api-key", key)
             header("anthropic-version", "2023-06-01")
@@ -362,9 +362,9 @@ class AiStreamingClient(
         .build()
 
     /**
-     * Cuerpo JSON de la petición según la [RequestShape] aprendida: permite
-     * omitir "reasoning_effort" o "temperature" y usar
-     * "max_completion_tokens" cuando el proveedor así lo exige.
+     * Request JSON body according to the learned [RequestShape]: allows
+     * omitting "reasoning_effort" or "temperature" and using
+     * "max_completion_tokens" when the provider requires it.
      */
     private fun buildRequestBody(request: AiRequest, shape: RequestShape, stream: Boolean): String {
         val messages = JSONArray()
@@ -402,8 +402,8 @@ class AiStreamingClient(
     private fun rememberShape(baseUrl: String, model: String, shape: RequestShape) {
         val key = shapeKey(baseUrl, model)
         val previous = learnedShapes[key] ?: RequestShape()
-        // Solo se acumulan restricciones; un intento sin razonamiento no
-        // debe "olvidar" que el modelo sí lo soporta.
+        // Restrictions only accumulate; an attempt without reasoning must
+        // not "forget" that the model does support it.
         learnedShapes[key] = previous.copy(
             includeReasoning = previous.includeReasoning &&
                 !(shape.reasoningRejected),
@@ -412,7 +412,7 @@ class AiStreamingClient(
         )
     }
 
-    /** Ajusta la forma según el 400 del proveedor, o null si no es un problema de parámetros. */
+    /** Adjusts the shape based on the provider's 400, or null if it is not a parameter problem. */
     private fun adjustShape(shape: RequestShape, errorBody: String): RequestShape? {
         val body = errorBody.lowercase()
         if (shape.includeReasoning && isReasoningEffortRejection(errorBody)) {
@@ -433,10 +433,10 @@ class AiStreamingClient(
     }
 
     /**
-     * Detecta el 400 específico de "reasoning_effort": el proveedor menciona el
-     * campo (p. ej. "reasoning_effort is not enabled for this model") o combina
-     * "reasoning" con "not support"/"not enabled"/"unsupported". Cualquier otro
-     * 400 debe mostrarse tal cual: no dispara el reintento.
+     * Detects the specific "reasoning_effort" 400: the provider mentions the
+     * field (e.g. "reasoning_effort is not enabled for this model") or combines
+     * "reasoning" with "not support"/"not enabled"/"unsupported". Any other
+     * 400 must be shown as is: it does not trigger the retry.
      */
     private fun isReasoningEffortRejection(errorBody: String): Boolean {
         val body = errorBody.lowercase()

@@ -1,5 +1,7 @@
 package com.termino.ui.screens
 
+import com.termino.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -133,7 +135,7 @@ fun LibraryScreen(
                     .padding(horizontal = 20.dp, vertical = 4.dp),
                 placeholder = {
                     Text(
-                        "Buscar por título o autor",
+                        stringResource(R.string.library_search_placeholder),
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -150,7 +152,7 @@ fun LibraryScreen(
                         IconButton(onClick = { viewModel.setQuery("") }) {
                             Icon(
                                 Icons.Outlined.Close,
-                                contentDescription = "Limpiar búsqueda",
+                                contentDescription = stringResource(R.string.toc_search_clear),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -211,7 +213,7 @@ fun LibraryScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Biblioteca",
+                            text = stringResource(R.string.library_title),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onBackground
@@ -229,7 +231,7 @@ fun LibraryScreen(
                             }
                         ) {
                             TextButton(onClick = viewModel::clearFinishedImports) {
-                                Text("Limpiar avisos", fontSize = 11.sp)
+                                Text(stringResource(R.string.library_clear_notices), fontSize = 11.sp)
                             }
                         }
                     }
@@ -256,11 +258,10 @@ fun LibraryScreen(
     bookToDelete?.let { book ->
         AlertDialog(
             onDismissRequest = { bookToDelete = null },
-            title = { Text("Eliminar libro") },
+            title = { Text(stringResource(R.string.library_delete_title)) },
             text = {
                 Text(
-                    "Se borrarán «${book.title}», sus subrayados y el historial de chat. " +
-                        "Esta acción no se puede deshacer."
+                    stringResource(R.string.library_delete_body, book.title)
                 )
             },
             confirmButton = {
@@ -271,7 +272,7 @@ fun LibraryScreen(
                     }
                 ) {
                     Text(
-                        "Eliminar",
+                        stringResource(R.string.action_delete),
                         color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -279,7 +280,7 @@ fun LibraryScreen(
             },
             dismissButton = {
                 TextButton(onClick = { bookToDelete = null }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -294,7 +295,7 @@ private fun LibraryHeader(
     onOpenSettings: () -> Unit
 ) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-    // En móvil (< 600 dp) la píldora de IA queda en punto y "Importar" en icono.
+    // On phones (< 600 dp) the AI pill shrinks to a dot and "Import" to an icon.
     val narrow = maxWidth < 600.dp
     Row(
         modifier = Modifier
@@ -327,7 +328,7 @@ private fun LibraryHeader(
                 maxLines = 1
             )
             Text(
-                text = "Lectura con IA · todo en tu dispositivo",
+                text = stringResource(R.string.library_tagline),
                 fontSize = 10.5.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -340,7 +341,7 @@ private fun LibraryHeader(
             IconButton(onClick = onImport) {
                 Icon(
                     Icons.Outlined.Add,
-                    contentDescription = "Importar",
+                    contentDescription = stringResource(R.string.action_import),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -360,13 +361,13 @@ private fun LibraryHeader(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(6.dp))
-                Text("Importar", fontSize = 12.sp)
+                Text(stringResource(R.string.action_import), fontSize = 12.sp)
             }
         }
         IconButton(onClick = onOpenSettings) {
             Icon(
                 Icons.Outlined.Settings,
-                contentDescription = "Ajustes",
+                contentDescription = stringResource(R.string.settings_title),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -402,37 +403,37 @@ private fun EmptyLibrary(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "Lectura aumentada, de verdad",
+                        text = stringResource(R.string.library_hero_title),
                         fontSize = 18.sp,
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Serif,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
-                        text = "Todo ocurre en tu dispositivo. Tú decides qué modelo usar y qué compartir.",
+                        text = stringResource(R.string.library_hero_body),
                         fontSize = 11.5.sp,
                         lineHeight = 17.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     FeatureCard(
                         icon = Icons.Outlined.Search,
-                        title = "Búsqueda híbrida",
-                        text = "Pregunta al libro: la IA encuentra los pasajes relevantes y cita la página."
+                        title = stringResource(R.string.feature_search_title),
+                        text = stringResource(R.string.feature_search_body)
                     )
                     FeatureCard(
                         icon = Icons.Outlined.BookmarkBorder,
-                        title = "Subrayados persistentes",
-                        text = "Selecciona, resalta y vuelve a cada idea desde el panel de notas."
+                        title = stringResource(R.string.feature_highlights_title),
+                        text = stringResource(R.string.feature_highlights_body)
                     )
                     FeatureCard(
                         icon = Icons.Outlined.Lock,
-                        title = "Tu API Key, tu modelo",
-                        text = "OpenAI, Anthropic, Gemini, Mistral, OpenRouter u Ollama. Sin cuentas."
+                        title = stringResource(R.string.feature_byok_title),
+                        text = stringResource(R.string.feature_byok_body)
                     )
                     FeatureCard(
                         icon = Icons.Outlined.AutoAwesome,
-                        title = "Contexto de página",
-                        text = "La IA recibe tu página actual, tus notas y el Top-5 del libro."
+                        title = stringResource(R.string.feature_context_title),
+                        text = stringResource(R.string.feature_context_body)
                     )
                 }
             }
@@ -453,18 +454,18 @@ private fun EmptyLibrary(
                 ) {
                     FeatureCard(
                         icon = Icons.Outlined.Search,
-                        title = "Búsqueda híbrida",
-                        text = "Pregunta al libro: la IA encuentra los pasajes relevantes y cita la página."
+                        title = stringResource(R.string.feature_search_title),
+                        text = stringResource(R.string.feature_search_body)
                     )
                     FeatureCard(
                         icon = Icons.Outlined.BookmarkBorder,
-                        title = "Subrayados persistentes",
-                        text = "Selecciona, resalta y vuelve a cada idea desde el panel de notas."
+                        title = stringResource(R.string.feature_highlights_title),
+                        text = stringResource(R.string.feature_highlights_body)
                     )
                     FeatureCard(
                         icon = Icons.Outlined.Lock,
-                        title = "Tu API Key, tu modelo",
-                        text = "OpenAI, Anthropic, Gemini, Mistral, OpenRouter u Ollama. Sin cuentas."
+                        title = stringResource(R.string.feature_byok_title),
+                        text = stringResource(R.string.feature_byok_body)
                     )
                 }
             }
@@ -507,7 +508,7 @@ private fun EmptyHero(
             }
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "Tu biblioteca empieza aquí",
+                text = stringResource(R.string.library_empty_title),
                 fontSize = 25.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Serif,
                 fontWeight = FontWeight.SemiBold,
@@ -516,8 +517,7 @@ private fun EmptyHero(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Importa un EPUB o un PDF. Término extrae el texto, lo indexa " +
-                    "en tu dispositivo y convierte cada página en una conversación con tu propio modelo.",
+                text = stringResource(R.string.library_empty_body),
                 modifier = Modifier.fillMaxWidth(0.92f),
                 fontSize = 12.5.sp,
                 lineHeight = 19.sp,
@@ -536,15 +536,15 @@ private fun EmptyHero(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(7.dp))
-                Text("Importar EPUB o PDF", fontSize = 13.sp)
+                Text(stringResource(R.string.library_import_button), fontSize = 13.sp)
             }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onSampleEpub, shape = RoundedCornerShape(12.dp)) {
-                    Text("Muestra EPUB", fontSize = 11.5.sp)
+                    Text(stringResource(R.string.library_sample_epub), fontSize = 11.5.sp)
                 }
                 OutlinedButton(onClick = onSamplePdf, shape = RoundedCornerShape(12.dp)) {
-                    Text("Muestra PDF", fontSize = 11.5.sp)
+                    Text(stringResource(R.string.library_sample_pdf), fontSize = 11.5.sp)
                 }
             }
         }
@@ -633,7 +633,7 @@ private fun ContinueReadingCard(
             Spacer(Modifier.width(18.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = "Continuar leyendo",
+                    text = stringResource(R.string.library_continue_reading),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary,
@@ -764,10 +764,10 @@ private fun ImportJobCard(
                 )
                 Text(
                     text = job.message ?: when (job.state) {
-                        ImportJobState.QUEUED -> "En cola"
-                        ImportJobState.RUNNING -> "Procesando…"
-                        ImportJobState.SUCCESS -> "Listo para leer"
-                        ImportJobState.ERROR -> "Error"
+                        ImportJobState.QUEUED -> stringResource(R.string.import_queued)
+                        ImportJobState.RUNNING -> stringResource(R.string.import_processing)
+                        ImportJobState.SUCCESS -> stringResource(R.string.import_ready)
+                        ImportJobState.ERROR -> stringResource(R.string.import_state_error)
                     },
                     fontSize = 10.5.sp,
                     color = if (error) MaterialTheme.colorScheme.error
@@ -790,13 +790,13 @@ private fun ImportJobCard(
             }
             if (success && job.bookId != null) {
                 TextButton(onClick = { onOpenBook(job.bookId) }) {
-                    Text("Abrir", fontSize = 11.sp)
+                    Text(stringResource(R.string.action_open), fontSize = 11.sp)
                 }
             }
             IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
                 Icon(
                     Icons.Outlined.Close,
-                    contentDescription = "Descartar aviso",
+                    contentDescription = stringResource(R.string.library_dismiss_notice),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(16.dp)
                 )
@@ -814,7 +814,7 @@ private fun BookCard(
     onDelete: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
-    // Respuesta táctil: la tarjeta se hunde ligeramente al pulsarla.
+    // Touch feedback: the card sinks slightly when pressed.
     val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val pressScale by androidx.compose.animation.core.animateFloatAsState(
@@ -875,7 +875,7 @@ private fun BookCard(
                 ) {
                     Icon(
                         Icons.Outlined.MoreVert,
-                        contentDescription = "Opciones del libro",
+                        contentDescription = stringResource(R.string.library_book_options),
                         tint = Color.White,
                         modifier = Modifier.size(17.dp)
                     )
@@ -885,14 +885,14 @@ private fun BookCard(
                     onDismissRequest = { menuExpanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Abrir", fontSize = 13.sp) },
+                        text = { Text(stringResource(R.string.action_open), fontSize = 13.sp) },
                         onClick = {
                             menuExpanded = false
                             onOpen()
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Reanalizar", fontSize = 13.sp) },
+                        text = { Text(stringResource(R.string.library_reprocess), fontSize = 13.sp) },
                         leadingIcon = {
                             Icon(
                                 Icons.Outlined.Refresh,
@@ -907,7 +907,7 @@ private fun BookCard(
                     DropdownMenuItem(
                         text = {
                             Text(
-                                "Eliminar",
+                                stringResource(R.string.action_delete),
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -1036,13 +1036,13 @@ private fun NoResults() {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "No hay libros que coincidan",
+            text = stringResource(R.string.library_no_matches),
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            text = "Prueba con otro título o autor.",
+            text = stringResource(R.string.library_no_matches_hint),
             fontSize = 11.5.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1050,8 +1050,8 @@ private fun NoResults() {
 }
 
 /**
- * Estado de la conexión de IA en la cabecera: punto verde + proveedor si está
- * conectada, o invitación a conectar. Cambia con un fundido y ajuste de tamaño.
+ * AI connection status in the header: green dot + provider when connected,
+ * or an invitation to connect. Changes with a fade and size animation.
  */
 @Composable
 private fun AiStatusPill(label: String?, compact: Boolean = false, onClick: () -> Unit) {
@@ -1074,7 +1074,7 @@ private fun AiStatusPill(label: String?, compact: Boolean = false, onClick: () -
             if (compact) {
                 Icon(
                     Icons.Outlined.AutoAwesome,
-                    contentDescription = if (label != null) label else "Conectar IA",
+                    contentDescription = label ?: stringResource(R.string.library_connect_ai),
                     modifier = Modifier.size(16.dp),
                     tint = if (connected) MaterialTheme.colorScheme.onSecondaryContainer
                     else MaterialTheme.colorScheme.onSurfaceVariant
